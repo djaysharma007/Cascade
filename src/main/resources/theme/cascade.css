@@ -396,3 +396,94 @@
 .list-row:hover {
     -fx-background-color: -color-bg-raised;
 }
+
+
+/* Navigation items in sidebar */
+.nav-item {
+    -fx-min-height: 36px;
+    -fx-pref-height: 36px;
+    -fx-padding: 0 12px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.nav-item:hover {
+    -fx-background-color: -color-bg-raised;
+}
+
+.nav-item-active {
+    -fx-background-color: derive(#093A3E, 15%);
+    -fx-border-color: -color-accent;
+    -fx-border-width: 0 0 0 3px;
+}
+
+/* Needs attention alert box */
+.needs-attention-box {
+    -fx-background-color: derive(#F2B84B, -80%);
+    -fx-border-color: -color-warning;
+    -fx-border-width: 1px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-padding: 12px 16px;
+}
+
+/* Form row layout */
+.form-row {
+    -fx-alignment: CENTER_LEFT;
+    -fx-spacing: 12px;
+}
+
+.form-label {
+    -fx-font-family: 'Inter', 'Segoe UI', sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: -color-text-secondary;
+    -fx-min-width: 140px;
+}
+
+/* Detail side panel */
+.detail-panel {
+    -fx-background-color: -color-bg-surface;
+    -fx-border-color: transparent transparent transparent -color-border;
+    -fx-border-width: 1px;
+    -fx-min-width: 380px;
+    -fx-pref-width: 420px;
+    -fx-padding: 24px;
+}
+
+/* Step timeline item */
+.step-timeline-item {
+    -fx-background-color: -color-bg-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-padding: 12px;
+}
+
+.step-timeline-notrun {
+    -fx-opacity: 0.5;
+}
+
+/* Segmented control for Match all/any */
+.segmented-control {
+    -fx-background-color: -color-bg-raised;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-padding: 2px;
+}
+
+.segment-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-text-secondary;
+    -fx-background-radius: 4px;
+    -fx-padding: 4px 12px;
+    -fx-cursor: hand;
+}
+
+.segment-button-active {
+    -fx-background-color: -color-accent;
+    -fx-text-fill: -color-bg-base;
+    -fx-font-weight: bold;
+}

@@ -1,17 +1,33 @@
 package io.github.djaysharma007.cascade.app;
 
+import io.github.djaysharma007.cascade.core.Event;
+import io.github.djaysharma007.cascade.core.Workflow;
+import io.github.djaysharma007.cascade.core.WorkflowRepository;
+import io.github.djaysharma007.cascade.engine.EngineFacade;
+import io.github.djaysharma007.cascade.engine.WorkflowEngine;
+import io.github.djaysharma007.cascade.plugins.BuiltinPlugins;
+import io.github.djaysharma007.cascade.registry.PluginRegistry;
+import io.github.djaysharma007.cascade.storage.JsonWorkflowRepository;
+import io.github.djaysharma007.cascade.ui.views.ActivityView;
+import io.github.djaysharma007.cascade.ui.views.MainShellView;
+import io.github.djaysharma007.cascade.ui.views.WorkflowEditorView;
+import io.github.djaysharma007.cascade.ui.views.WorkflowsView;
 import javafx.application.Platform;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
 import javafx.stage.Stage;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,7 +38,8 @@ class CascadeApplicationTest {
 
     private static boolean platformStarted = false;
 
-    private static synchronized void initPlatform() {
+    @BeforeAll
+    static synchronized void initPlatform() {
         if (!platformStarted) {
             try {
                 Platform.startup(() -> {});
@@ -33,32 +50,8 @@ class CascadeApplicationTest {
         }
     }
 
-    @Test
-    void applicationLaunchesAndCapturesThemedEmptyWindow() throws Exception {
-        initPlatform();
-
+    private static void saveSnapshot(Scene scene, String filename) throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<Stage> stageRef = new AtomicReference<>();
-        AtomicReference<Scene> sceneRef = new AtomicReference<>();
-
-        Platform.runLater(() -> {
-            try {
-                CascadeApplication app = new CascadeApplication();
-                Stage stage = new Stage();
-                app.start(stage);
-                stageRef.set(stage);
-                sceneRef.set(stage.getScene());
-            } finally {
-                latch.countDown();
-            }
-        });
-
-        assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
-        Scene scene = sceneRef.get();
-        assertThat(scene).isNotNull();
-
-        // Capture snapshot on FX thread
-        CountDownLatch snapLatch = new CountDownLatch(1);
         AtomicReference<WritableImage> imageRef = new AtomicReference<>();
 
         Platform.runLater(() -> {
@@ -66,15 +59,14 @@ class CascadeApplicationTest {
                 WritableImage image = scene.snapshot(null);
                 imageRef.set(image);
             } finally {
-                snapLatch.countDown();
+                latch.countDown();
             }
         });
 
-        assertThat(snapLatch.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         WritableImage fxImage = imageRef.get();
         assertThat(fxImage).isNotNull();
 
-        // Save screenshot
         int width = (int) fxImage.getWidth();
         int height = (int) fxImage.getHeight();
         BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
@@ -87,18 +79,113 @@ class CascadeApplicationTest {
 
         Path screenshotDir = Path.of("docs", "screenshots");
         Files.createDirectories(screenshotDir);
-        File file = screenshotDir.resolve("phase0_empty_window.png").toFile();
+        File file = screenshotDir.resolve(filename).toFile();
         ImageIO.write(bufferedImage, "png", file);
-
         assertThat(file).exists();
         assertThat(file.length()).isGreaterThan(0);
+    }
 
-        // Close stage
+    @Test
+    void applicationFullUiWorkflowAndScreenshots(@TempDir Path tempWorkflowsDir) throws Exception {
+        // Initialize CompositionRoot with temporary directory
+        CompositionRoot compRoot = new CompositionRoot(tempWorkflowsDir);
+        PluginRegistry registry = compRoot.registry();
+        WorkflowRepository repository = compRoot.repository();
+        EngineFacade facade = compRoot.facade();
+
+        CountDownLatch stageLatch = new CountDownLatch(1);
+        AtomicReference<Stage> stageRef = new AtomicReference<>();
+        AtomicReference<MainShellView> shellRef = new AtomicReference<>();
+        AtomicReference<Scene> sceneRef = new AtomicReference<>();
+
         Platform.runLater(() -> {
-            Stage stage = stageRef.get();
-            if (stage != null) {
-                stage.close();
+            try {
+                Stage stage = new Stage();
+                MainShellView shell = new MainShellView(facade, repository, registry);
+                Scene scene = new Scene((Parent) shell.getNode(), 1280, 800);
+                String cssUrl = getClass().getResource("/theme/cascade.css") != null
+                        ? getClass().getResource("/theme/cascade.css").toExternalForm()
+                        : null;
+                if (cssUrl != null) {
+                    scene.getStylesheets().add(cssUrl);
+                }
+                stage.setScene(scene);
+                stage.show();
+
+                stageRef.set(stage);
+                shellRef.set(shell);
+                sceneRef.set(scene);
+            } finally {
+                stageLatch.countDown();
             }
         });
+
+        assertThat(stageLatch.await(10, TimeUnit.SECONDS)).isTrue();
+        Stage stage = stageRef.get();
+        MainShellView shell = shellRef.get();
+        Scene scene = sceneRef.get();
+
+        // 1. Capture populated Workflows View (with seeded "Sort assignments" workflow)
+        saveSnapshot(scene, "phase5_workflows_populated.png");
+
+        // 2. Open Editor view and capture
+        CountDownLatch editorLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            shell.openNewWorkflowEditor();
+            editorLatch.countDown();
+        });
+        assertThat(editorLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(scene, "phase5_editor.png");
+
+        // 3. Switch to Activity View (empty state) and capture
+        CountDownLatch actEmptyLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            shell.showActivityView();
+            actEmptyLatch.countDown();
+        });
+        assertThat(actEmptyLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(scene, "phase5_activity_empty.png");
+
+        // 4. Run an execution and capture populated Activity View
+        Workflow wf = facade.allWorkflows().get(0);
+        Event sampleEvent = Event.of(Map.of(
+                "fileName", "assignment_final.pdf",
+                "filePath", tempWorkflowsDir.resolve("assignment_final.pdf").toString(),
+                "fileSize", 1024 * 500
+        ));
+        facade.executeWorkflowManually(wf.id(), sampleEvent);
+
+        CountDownLatch actPopLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            shell.showActivityView();
+            actPopLatch.countDown();
+        });
+        assertThat(actPopLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(scene, "phase5_activity_populated.png");
+
+        // 5. Test engine start/stop toggling
+        CountDownLatch engineLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            facade.start();
+            assertThat(facade.isRunning()).isTrue();
+            facade.stop();
+            assertThat(facade.isRunning()).isFalse();
+            engineLatch.countDown();
+        });
+        assertThat(engineLatch.await(5, TimeUnit.SECONDS)).isTrue();
+
+        // 6. Delete workflow to capture empty workflows view
+        CountDownLatch deleteLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            facade.unregisterWorkflow(wf.id());
+            repository.delete(wf.id());
+            shell.showWorkflowsView();
+            deleteLatch.countDown();
+        });
+        assertThat(deleteLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(scene, "phase5_workflows_empty.png");
+
+        // Close stage
+        Platform.runLater(stage::close);
     }
 }
