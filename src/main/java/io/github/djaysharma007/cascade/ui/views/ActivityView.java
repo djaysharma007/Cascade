@@ -1,7 +1,9 @@
 package io.github.djaysharma007.cascade.ui.views;
 
 import io.github.djaysharma007.cascade.core.ExecutionResult;
+import io.github.djaysharma007.cascade.core.RunId;
 import io.github.djaysharma007.cascade.engine.EngineFacade;
+import io.github.djaysharma007.cascade.engine.RunOutcome;
 import io.github.djaysharma007.cascade.engine.RunRecord;
 import io.github.djaysharma007.cascade.engine.StepRecord;
 import javafx.beans.property.SimpleStringProperty;
@@ -106,12 +108,26 @@ public final class ActivityView {
     }
 
     public void refresh() {
+        RunRecord selected = tableView.getSelectionModel().getSelectedItem();
+        RunId selectedId = selected != null ? selected.id() : null;
+
         List<RunRecord> runs = facade.getRuns();
         tableView.getItems().setAll(runs);
+
         if (runs.isEmpty()) {
             root.setCenter(emptyState);
+            root.setRight(null);
         } else {
             root.setCenter(tableView);
+            if (selectedId != null) {
+                for (RunRecord r : runs) {
+                    if (r.id().equals(selectedId)) {
+                        tableView.getSelectionModel().select(r);
+                        showDetailPanel(r);
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -135,7 +151,7 @@ public final class ActivityView {
 
         detailHeader.getChildren().addAll(title, spacer, closeBtn);
 
-        // Metadata
+        // Metadata box
         VBox metaBox = new VBox(6);
         metaBox.getStyleClass().add("card");
         metaBox.setPadding(new Insets(12));
@@ -147,13 +163,22 @@ public final class ActivityView {
         Label runId = new Label("ID: " + run.id().value());
         runId.getStyleClass().add("code-text");
 
+        Label triggerLabel = new Label("Trigger: " + run.triggerSummary());
+        triggerLabel.getStyleClass().add("secondary-text");
+
         Label outcomeLabel = new Label("Outcome: " + run.outcome());
         outcomeLabel.getStyleClass().addAll("chip", getChipStyle(run.outcome().name()));
 
         Label durLabel = new Label("Total duration: " + run.totalDurationMs() + " ms");
         durLabel.getStyleClass().add("secondary-text");
 
-        metaBox.getChildren().addAll(wfName, runId, outcomeLabel, durLabel);
+        metaBox.getChildren().addAll(wfName, runId, triggerLabel, outcomeLabel, durLabel);
+
+        // If run failed, display a prominent failure cause banner
+        if (run.outcome() == RunOutcome.FAILED) {
+            VBox failureCard = createFailureBanner(run);
+            metaBox.getChildren().add(failureCard);
+        }
 
         // Timeline of steps
         Label stepsTitle = new Label("Step execution timeline");
@@ -161,10 +186,11 @@ public final class ActivityView {
 
         VBox stepsBox = new VBox(8);
         for (StepRecord step : run.steps()) {
-            VBox stepCard = new VBox(4);
+            VBox stepCard = new VBox(6);
             stepCard.getStyleClass().add("step-timeline-item");
 
-            boolean notRun = step.result() instanceof ExecutionResult.Skipped;
+            boolean notRun = step.result() instanceof ExecutionResult.Skipped sk
+                    && sk.reason().contains("Not run");
             if (notRun) {
                 stepCard.getStyleClass().add("step-timeline-notrun");
             }
@@ -173,18 +199,51 @@ public final class ActivityView {
             stepHeader.getStyleClass().add("body-text");
             stepHeader.setStyle("-fx-font-weight: bold;");
 
+            HBox badgeRow = new HBox(8);
+            badgeRow.setAlignment(Pos.CENTER_LEFT);
+
             String resText = step.result() instanceof ExecutionResult.Success ? "Succeeded"
                     : (step.result() instanceof ExecutionResult.Failed ? "Failed" : "Not run");
-            Label stepRes = new Label(resText + " (" + step.durationMs() + " ms)");
+            Label stepRes = new Label(resText);
             stepRes.getStyleClass().addAll("chip", getChipStyle(resText));
 
-            stepCard.getChildren().addAll(stepHeader, stepRes);
+            Label stepDur = new Label(step.durationMs() + " ms");
+            stepDur.getStyleClass().add("caption-text");
+
+            if (step.attempts() > 0) {
+                String attemptStr = step.attempts() == 1 ? "1 attempt" : step.attempts() + " attempts";
+                Label attemptLabel = new Label(attemptStr);
+                attemptLabel.getStyleClass().add("caption-text");
+                badgeRow.getChildren().addAll(stepRes, stepDur, attemptLabel);
+            } else {
+                badgeRow.getChildren().addAll(stepRes, stepDur);
+            }
+
+            stepCard.getChildren().addAll(stepHeader, badgeRow);
 
             if (step.result() instanceof ExecutionResult.Failed f) {
-                Label failReason = new Label(f.failure().toString());
+                Label failReason = new Label(f.failure().message());
                 failReason.getStyleClass().add("field-error-label");
                 failReason.setWrapText(true);
                 stepCard.getChildren().add(failReason);
+
+                f.failure().findCause().ifPresent(cause -> {
+                    Label causeLabel = new Label("Cause: " + cause.getClass().getSimpleName() + ": " + cause.getMessage());
+                    causeLabel.getStyleClass().add("caption-text");
+                    causeLabel.setStyle("-fx-text-fill: -color-error;");
+                    causeLabel.setWrapText(true);
+                    stepCard.getChildren().add(causeLabel);
+                });
+            } else if (step.result() instanceof ExecutionResult.Skipped sk) {
+                Label skipReason = new Label(sk.reason());
+                skipReason.getStyleClass().add("secondary-text");
+                skipReason.setWrapText(true);
+                stepCard.getChildren().add(skipReason);
+            } else if (step.result() instanceof ExecutionResult.Success succ && !succ.output().isEmpty()) {
+                Label outputLabel = new Label("Output: " + succ.output());
+                outputLabel.getStyleClass().add("caption-text");
+                outputLabel.setWrapText(true);
+                stepCard.getChildren().add(outputLabel);
             }
 
             stepsBox.getChildren().add(stepCard);
@@ -197,6 +256,44 @@ public final class ActivityView {
 
         detailPanel.getChildren().addAll(detailHeader, metaBox, stepsTitle, stepsScroll);
         root.setRight(detailPanel);
+    }
+
+    private VBox createFailureBanner(RunRecord run) {
+        VBox failureCard = new VBox(4);
+        failureCard.getStyleClass().addAll("card", "error-card");
+        failureCard.setPadding(new Insets(8));
+
+        Label failHeader = new Label("Failure reason");
+        failHeader.getStyleClass().add("body-text");
+        failHeader.setStyle("-fx-font-weight: bold; -fx-text-fill: -color-error;");
+
+        StepRecord failedStep = run.steps().stream()
+                .filter(s -> s.result() instanceof ExecutionResult.Failed)
+                .findFirst()
+                .orElse(null);
+
+        if (failedStep != null && failedStep.result() instanceof ExecutionResult.Failed f) {
+            Label msgLabel = new Label(failedStep.actionName() + ": " + f.failure().message());
+            msgLabel.getStyleClass().add("body-text");
+            msgLabel.setStyle("-fx-text-fill: -color-error;");
+            msgLabel.setWrapText(true);
+            failureCard.getChildren().addAll(failHeader, msgLabel);
+
+            f.failure().findCause().ifPresent(cause -> {
+                Label causeLabel = new Label("Cause: " + cause.getClass().getSimpleName() + ": " + cause.getMessage());
+                causeLabel.getStyleClass().add("caption-text");
+                causeLabel.setStyle("-fx-text-fill: -color-error;");
+                causeLabel.setWrapText(true);
+                failureCard.getChildren().add(causeLabel);
+            });
+        } else {
+            Label fallback = new Label("Workflow run failed without recorded step failure.");
+            fallback.getStyleClass().add("body-text");
+            fallback.setStyle("-fx-text-fill: -color-error;");
+            failureCard.getChildren().addAll(failHeader, fallback);
+        }
+
+        return failureCard;
     }
 
     private String getChipStyle(String status) {

@@ -4,6 +4,7 @@ import io.github.djaysharma007.cascade.core.Action;
 import io.github.djaysharma007.cascade.core.Event;
 import io.github.djaysharma007.cascade.core.ExecutionContext;
 import io.github.djaysharma007.cascade.core.ExecutionResult;
+import io.github.djaysharma007.cascade.core.Failure;
 import io.github.djaysharma007.cascade.core.PluginSpec;
 import io.github.djaysharma007.cascade.core.RunId;
 import io.github.djaysharma007.cascade.core.ThreadSafety;
@@ -223,7 +224,7 @@ public final class WorkflowEngine {
             return skipped;
         }
 
-        // Run actions in order
+        // Run actions in order with retry decorator
         List<StepRecord> stepRecords = new ArrayList<>();
         RunOutcome outcome = RunOutcome.SUCCEEDED;
 
@@ -241,22 +242,33 @@ public final class WorkflowEngine {
 
             long stepStart = System.currentTimeMillis();
             try {
-                Action action = registry.createAction(spec.pluginId(), spec.params());
+                Action rawAction = registry.createAction(spec.pluginId(), spec.params());
+                RetryingAction retryingAction = new RetryingAction(rawAction);
                 ExecutionContext context = new ExecutionContext(workflowId, runId, i);
-                ExecutionResult res = action.execute(event, context);
+                ExecutionResult res = retryingAction.execute(event, context);
+                int attempts = retryingAction.attemptsExecuted();
                 long duration = System.currentTimeMillis() - stepStart;
-                stepRecords.add(new StepRecord(i, spec.pluginId(), actionName, res, duration));
+                stepRecords.add(new StepRecord(i, spec.pluginId(), actionName, res, duration, attempts));
 
-                if (res instanceof ExecutionResult.Failed) {
+                if (res instanceof ExecutionResult.Failed f) {
                     outcome = RunOutcome.FAILED;
+                    Throwable cause = f.failure().findCause().orElse(null);
+                    if (cause != null) {
+                        log.error("Action '{}' (step {}) failed for workflow '{}' (run {}): {}",
+                                actionName, i, workflow.name(), runId, f.failure().message(), cause);
+                    } else {
+                        log.error("Action '{}' (step {}) failed for workflow '{}' (run {}): {}",
+                                actionName, i, workflow.name(), runId, f.failure().message());
+                    }
                 }
             } catch (Exception e) {
                 long duration = System.currentTimeMillis() - stepStart;
-                ExecutionResult failRes = new ExecutionResult.Failed(
-                        new io.github.djaysharma007.cascade.core.Failure.Defect(e, e.getMessage() != null ? e.getMessage() : "Error")
-                );
-                stepRecords.add(new StepRecord(i, spec.pluginId(), actionName, failRes, duration));
+                Failure failure = new Failure.Defect(e, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+                ExecutionResult failRes = new ExecutionResult.Failed(failure);
+                stepRecords.add(new StepRecord(i, spec.pluginId(), actionName, failRes, duration, 1));
                 outcome = RunOutcome.FAILED;
+                log.error("Action '{}' (step {}) threw unhandled exception for workflow '{}' (run {})",
+                        actionName, i, workflow.name(), runId, e);
             }
         }
 
@@ -269,12 +281,29 @@ public final class WorkflowEngine {
     }
 
     private void recordRun(RunRecord record) {
-        runHistory.add(0, record);
-        if (runHistory.size() > MAX_RUN_HISTORY) {
-            runHistory.remove(runHistory.size() - 1);
+        synchronized (runHistory) {
+            int existingIndex = -1;
+            for (int i = 0; i < runHistory.size(); i++) {
+                if (runHistory.get(i).id().equals(record.id())) {
+                    existingIndex = i;
+                    break;
+                }
+            }
+            if (existingIndex >= 0) {
+                runHistory.set(existingIndex, record);
+            } else {
+                runHistory.add(0, record);
+                if (runHistory.size() > MAX_RUN_HISTORY) {
+                    runHistory.remove(runHistory.size() - 1);
+                }
+            }
         }
         for (EngineListener l : listeners) {
-            l.onRunUpdated(record);
+            try {
+                l.onRunUpdated(record);
+            } catch (Exception e) {
+                log.warn("Error notifying engine listener", e);
+            }
         }
     }
 

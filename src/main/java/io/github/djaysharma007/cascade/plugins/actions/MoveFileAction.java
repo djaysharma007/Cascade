@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -53,6 +54,21 @@ public final class MoveFileAction implements Action {
             Files.createDirectories(destinationFolder);
             Path targetPath = destinationFolder.resolve(sourcePath.getFileName());
 
+            // Check if source and destination are the exact same file
+            boolean isSame;
+            try {
+                isSame = sourcePath.toAbsolutePath().normalize().equals(targetPath.toAbsolutePath().normalize())
+                        || (Files.exists(targetPath) && Files.isSameFile(sourcePath, targetPath));
+            } catch (IOException e) {
+                isSame = sourcePath.toAbsolutePath().normalize().equals(targetPath.toAbsolutePath().normalize());
+            }
+
+            if (isSame) {
+                return new ExecutionResult.Failed(new Failure.Expected(
+                        "Source and destination are the same file: " + sourcePath.toAbsolutePath()
+                ));
+            }
+
             if (Files.exists(targetPath)) {
                 switch (onConflict) {
                     case "skip" -> {
@@ -65,16 +81,29 @@ public final class MoveFileAction implements Action {
                         targetPath = resolveUniqueName(destinationFolder, sourcePath.getFileName().toString());
                         Files.move(sourcePath, targetPath);
                     }
-                    default -> throw new IllegalArgumentException("Unknown onConflict policy: " + onConflict);
+                    default -> {
+                        return new ExecutionResult.Failed(
+                                new Failure.Defect(null, "Unknown onConflict policy: " + onConflict)
+                        );
+                    }
                 }
             } else {
                 Files.move(sourcePath, targetPath);
             }
 
             log.info("Moved file {} -> {}", sourcePath, targetPath);
-            return new ExecutionResult.Success(Map.of("movedTo", targetPath.toAbsolutePath().toString()));
+            return new ExecutionResult.Success(Map.of(
+                    "movedTo", targetPath.toAbsolutePath().toString(),
+                    "sourcePath", sourcePath.toAbsolutePath().toString()
+            ));
+        } catch (FileSystemException e) {
+            log.warn("File system lock moving file {} -> {}: {}", sourcePath, destinationFolder, e.getMessage());
+            return new ExecutionResult.Failed(new Failure.Transient(
+                    "File is locked or in use by another process: " + sourcePath.getFileName() + " (" + e.getMessage() + ")",
+                    e
+            ));
         } catch (IOException e) {
-            log.warn("IO error moving file {}", sourcePath, e);
+            log.warn("IO error moving file {} -> {}", sourcePath, destinationFolder, e);
             return new ExecutionResult.Failed(new Failure.Transient("Failed to move file: " + e.getMessage(), e));
         }
     }
