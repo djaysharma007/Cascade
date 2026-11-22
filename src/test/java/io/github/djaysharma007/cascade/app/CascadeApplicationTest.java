@@ -15,8 +15,10 @@ import io.github.djaysharma007.cascade.ui.views.WorkflowsView;
 import javafx.application.Platform;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.TableView;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
+import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -162,6 +164,19 @@ class CascadeApplicationTest {
         });
         assertThat(actPopLatch.await(5, TimeUnit.SECONDS)).isTrue();
         saveSnapshot(scene, "phase5_activity_populated.png");
+
+        // 4b. Select run in table and capture detail panel with failure cause banner & timeline
+        CountDownLatch actDetailLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            ActivityView actView = shell.getActivityView();
+            BorderPane pane = (BorderPane) actView.getNode();
+            if (pane.getCenter() instanceof TableView<?> tv && !tv.getItems().isEmpty()) {
+                tv.getSelectionModel().select(0);
+            }
+            actDetailLatch.countDown();
+        });
+        assertThat(actDetailLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(scene, "phase5_activity_detail.png");
 
         // 5. Test engine start/stop toggling
         CountDownLatch engineLatch = new CountDownLatch(1);
