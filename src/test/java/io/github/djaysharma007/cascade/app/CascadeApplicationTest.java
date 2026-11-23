@@ -139,6 +139,15 @@ class CascadeApplicationTest {
         assertThat(wfLatch.await(5, TimeUnit.SECONDS)).isTrue();
         saveSnapshot(scene, "phase5_workflows_populated.png");
 
+        // 1b. Switch to Template Gallery View and capture
+        CountDownLatch tplLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            shell.showTemplateGalleryView();
+            tplLatch.countDown();
+        });
+        assertThat(tplLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(scene, "v1_1_template_gallery.png");
+
         // 2. Open Editor view and capture
         CountDownLatch editorLatch = new CountDownLatch(1);
         Platform.runLater(() -> {
