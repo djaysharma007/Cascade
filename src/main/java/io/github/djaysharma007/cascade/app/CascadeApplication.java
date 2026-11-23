@@ -69,7 +69,8 @@ public class CascadeApplication extends Application {
         this.mainShell = new MainShellView(
                 compositionRoot.facade(),
                 compositionRoot.repository(),
-                compositionRoot.registry()
+                compositionRoot.registry(),
+                compositionRoot.settingsService()
         );
 
         Scene scene = new Scene((javafx.scene.Parent) mainShell.getNode(), INITIAL_WIDTH, INITIAL_HEIGHT);

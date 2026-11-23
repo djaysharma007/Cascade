@@ -156,7 +156,7 @@ public final class JsonWorkflowRepository implements WorkflowRepository {
 
     // DTO Mappings
 
-    private static WorkflowDto toDto(Workflow wf) {
+    static WorkflowDto toDto(Workflow wf) {
         WorkflowDto dto = new WorkflowDto();
         dto.schemaVersion = CURRENT_SCHEMA_VERSION;
         dto.id = wf.id().value().toString();
@@ -168,7 +168,7 @@ public final class JsonWorkflowRepository implements WorkflowRepository {
         return dto;
     }
 
-    private static Workflow fromDto(WorkflowDto dto) {
+    static Workflow fromDto(WorkflowDto dto) {
         WorkflowBuilder builder = Workflow.builder()
                 .id(WorkflowId.of(dto.id))
                 .name(dto.name)

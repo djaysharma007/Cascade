@@ -9,6 +9,7 @@ import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
 import io.github.djaysharma007.cascade.ui.components.PluginDisplayNameResolver;
 import io.github.djaysharma007.cascade.ui.components.ToggleSwitch;
 import io.github.djaysharma007.cascade.ui.components.UiMotion;
+import io.github.djaysharma007.cascade.storage.WorkflowPortabilityService;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -21,7 +22,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -68,13 +71,36 @@ public final class WorkflowsView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button importBtn = new Button("Import");
+        importBtn.setGraphic(CascadeIcons.icon("folder", 0.85, "icon-secondary"));
+        importBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(importBtn);
+        importBtn.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Import Workflow JSON");
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Workflow JSON (*.json)", "*.json"));
+            File file = chooser.showOpenDialog(root.getScene() != null ? root.getScene().getWindow() : null);
+            if (file != null) {
+                try {
+                    WorkflowPortabilityService.importWorkflow(file.toPath(), repository, facade);
+                    refresh();
+                } catch (Exception ex) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Import Failed");
+                    alert.setHeaderText("Failed to import workflow");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                }
+            }
+        });
+
         Button newBtn = new Button("New workflow");
         newBtn.setGraphic(CascadeIcons.icon("plus", 0.9, "icon-primary"));
         newBtn.getStyleClass().add("button-primary");
         UiMotion.animateHover(newBtn);
         newBtn.setOnAction(e -> onNewWorkflow.run());
 
-        header.getChildren().addAll(title, spacer, newBtn);
+        header.getChildren().addAll(title, spacer, importBtn, newBtn);
 
         ScrollPane scrollPane = new ScrollPane(listContainer);
         scrollPane.setFitToWidth(true);
@@ -213,6 +239,35 @@ public final class WorkflowsView {
         UiMotion.animateHover(editBtn);
         editBtn.setOnAction(e -> onEditWorkflow.accept(wf));
 
+        // Export button
+        Button exportBtn = new Button("Export");
+        exportBtn.setGraphic(CascadeIcons.icon("file", 0.8, "icon-secondary"));
+        exportBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(exportBtn);
+        exportBtn.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Export Workflow JSON");
+            chooser.setInitialFileName(wf.name().replaceAll("[^a-zA-Z0-9-_\\.]", "_") + ".json");
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Workflow JSON (*.json)", "*.json"));
+            File target = chooser.showSaveDialog(root.getScene() != null ? root.getScene().getWindow() : null);
+            if (target != null) {
+                try {
+                    WorkflowPortabilityService.exportWorkflow(wf, target.toPath());
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Export Successful");
+                    alert.setHeaderText("Workflow exported successfully");
+                    alert.setContentText("Saved to " + target.getAbsolutePath());
+                    alert.showAndWait();
+                } catch (Exception ex) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Export Failed");
+                    alert.setHeaderText("Failed to export workflow");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                }
+            }
+        });
+
         // Delete button
         Button delBtn = new Button("Delete");
         delBtn.setGraphic(CascadeIcons.icon("trash", 0.8, "icon-error"));
@@ -231,7 +286,7 @@ public final class WorkflowsView {
             }
         });
 
-        row.getChildren().addAll(wfIcon, titleBox, spacer, chip, toggle, runBtn, editBtn, delBtn);
+        row.getChildren().addAll(wfIcon, titleBox, spacer, chip, toggle, runBtn, editBtn, exportBtn, delBtn);
         return row;
     }
 
