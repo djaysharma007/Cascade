@@ -40,17 +40,19 @@ public final class MainShellView implements EngineListener {
     private final StackPane contentArea = new StackPane();
     private final ToastOverlay toastOverlay = new ToastOverlay();
 
-    private final Label viewTitleLabel = new Label("Workflows");
+    private final Label viewTitleLabel = new Label("Dashboard");
     private final Button engineToggleBtn = new Button("Start engine");
     private final Label engineChip = new Label("Stopped");
     private Timeline pulseTimeline;
 
+    private final HBox navDashboard = new HBox(8);
     private final HBox navWorkflows = new HBox(8);
     private final HBox navActivity = new HBox(8);
 
     private final Label statusWorkflowCount = new Label();
     private final Label statusEngineState = new Label();
 
+    private DashboardView dashboardView;
     private WorkflowsView workflowsView;
     private ActivityView activityView;
     private WorkflowEditorView editorView;
@@ -68,6 +70,13 @@ public final class MainShellView implements EngineListener {
     }
 
     private void initViews() {
+        dashboardView = new DashboardView(
+                facade,
+                repository,
+                this::showActivityView,
+                this::showWorkflowsView,
+                this::openNewWorkflowEditor
+        );
         workflowsView = new WorkflowsView(
                 facade,
                 repository,
@@ -88,9 +97,8 @@ public final class MainShellView implements EngineListener {
         VBox sidebar = createSidebar();
         root.setLeft(sidebar);
 
-        // Center view area
-        contentArea.getChildren().add(workflowsView.getNode());
-        root.setCenter(contentArea);
+        // Default to Dashboard
+        showDashboardView();
 
         // Status bar
         HBox statusBar = createStatusBar();
@@ -157,9 +165,17 @@ public final class MainShellView implements EngineListener {
         Region sep = new Region();
         sep.setMinHeight(16);
 
+        // Nav Dashboard
+        navDashboard.setAlignment(Pos.CENTER_LEFT);
+        navDashboard.getStyleClass().addAll("nav-item", "nav-item-active");
+        Label dashLabel = new Label("Dashboard");
+        dashLabel.getStyleClass().add("body-text");
+        navDashboard.getChildren().addAll(CascadeIcons.icon("dashboard", 0.9, "icon-secondary"), dashLabel);
+        navDashboard.setOnMouseClicked(e -> showDashboardView());
+
         // Nav Workflows
         navWorkflows.setAlignment(Pos.CENTER_LEFT);
-        navWorkflows.getStyleClass().addAll("nav-item", "nav-item-active");
+        navWorkflows.getStyleClass().addAll("nav-item");
         Label wfLabel = new Label("Workflows");
         wfLabel.getStyleClass().add("body-text");
         navWorkflows.getChildren().addAll(CascadeIcons.icon("workflows", 0.9, "icon-secondary"), wfLabel);
@@ -173,7 +189,7 @@ public final class MainShellView implements EngineListener {
         navActivity.getChildren().addAll(CascadeIcons.icon("activity", 0.9, "icon-secondary"), actLabel);
         navActivity.setOnMouseClicked(e -> showActivityView());
 
-        sidebar.getChildren().addAll(newWfBtn, sep, navWorkflows, navActivity);
+        sidebar.getChildren().addAll(newWfBtn, sep, navDashboard, navWorkflows, navActivity);
         return sidebar;
     }
 
@@ -189,9 +205,23 @@ public final class MainShellView implements EngineListener {
         return statusBar;
     }
 
+    public void showDashboardView() {
+        viewTitleLabel.setText("Dashboard");
+        if (!navDashboard.getStyleClass().contains("nav-item-active")) {
+            navDashboard.getStyleClass().add("nav-item-active");
+        }
+        navWorkflows.getStyleClass().remove("nav-item-active");
+        navActivity.getStyleClass().remove("nav-item-active");
+        dashboardView.refresh();
+        contentArea.getChildren().setAll(dashboardView.getNode());
+        UiMotion.pageTransition(dashboardView.getNode());
+        updateStatusCounts();
+    }
+
     public void showWorkflowsView() {
         viewTitleLabel.setText("Workflows");
         navWorkflows.getStyleClass().add("nav-item-active");
+        navDashboard.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
         workflowsView.refresh();
         contentArea.getChildren().setAll(workflowsView.getNode());
@@ -202,6 +232,7 @@ public final class MainShellView implements EngineListener {
     public void showActivityView() {
         viewTitleLabel.setText("Activity");
         navActivity.getStyleClass().add("nav-item-active");
+        navDashboard.getStyleClass().remove("nav-item-active");
         navWorkflows.getStyleClass().remove("nav-item-active");
         activityView.refresh();
         contentArea.getChildren().setAll(activityView.getNode());
@@ -210,6 +241,7 @@ public final class MainShellView implements EngineListener {
 
     public void openNewWorkflowEditor() {
         viewTitleLabel.setText("New workflow");
+        navDashboard.getStyleClass().remove("nav-item-active");
         navWorkflows.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
 
@@ -226,6 +258,7 @@ public final class MainShellView implements EngineListener {
 
     public void openEditWorkflowEditor(Workflow workflow) {
         viewTitleLabel.setText("Edit workflow");
+        navDashboard.getStyleClass().remove("nav-item-active");
         navWorkflows.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
 
@@ -285,6 +318,7 @@ public final class MainShellView implements EngineListener {
     @Override
     public void onRunUpdated(RunRecord record) {
         Platform.runLater(() -> {
+            dashboardView.refresh();
             activityView.refresh();
             workflowsView.refresh();
         });
@@ -292,6 +326,10 @@ public final class MainShellView implements EngineListener {
 
     public Node getNode() {
         return shellContainer;
+    }
+
+    public DashboardView getDashboardView() {
+        return dashboardView;
     }
 
     public WorkflowsView getWorkflowsView() {
