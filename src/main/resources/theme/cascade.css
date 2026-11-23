@@ -622,6 +622,38 @@
     -fx-fill: -color-accent;
 }
 
+/* Step Badges */
+.step-badge {
+    -fx-background-color: -color-bg-raised;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-padding: 2px 8px;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-text-secondary;
+}
+
+.step-badge-trigger {
+    -fx-background-color: derive(#3AAFB9, -70%);
+    -fx-border-color: -color-accent;
+    -fx-text-fill: -color-accent-bright;
+}
+
+.step-badge-action {
+    -fx-background-color: derive(#5BD68A, -75%);
+    -fx-border-color: -color-success;
+    -fx-text-fill: -color-success;
+}
+
+.step-badge-condition {
+    -fx-background-color: derive(#F2B84B, -75%);
+    -fx-border-color: -color-warning;
+    -fx-text-fill: -color-warning;
+}
+
+
 /* Dashboard Stat Cards */
 .stat-card {
     -fx-background-color: -color-bg-surface;
