@@ -12,7 +12,10 @@ import io.github.djaysharma007.cascade.engine.EngineFacade;
 import io.github.djaysharma007.cascade.engine.RunRecord;
 import io.github.djaysharma007.cascade.registry.PluginDescriptor;
 import io.github.djaysharma007.cascade.registry.PluginRegistry;
+import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
 import io.github.djaysharma007.cascade.ui.components.DynamicFormBuilder;
+import io.github.djaysharma007.cascade.ui.components.PluginDisplayNameResolver;
+import io.github.djaysharma007.cascade.ui.components.UiMotion;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -21,6 +24,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
@@ -52,7 +56,7 @@ public final class WorkflowEditorView {
     private final CheckBox enabledCheckBox = new CheckBox("Enabled");
 
     private ComboBox<String> triggerSelector;
-    private VBox triggerFormContainer = new VBox(8);
+    private final VBox triggerFormContainer = new VBox(8);
     private DynamicFormBuilder triggerFormBuilder;
 
     private boolean matchAll = true;
@@ -92,7 +96,7 @@ public final class WorkflowEditorView {
         VBox formContent = new VBox(20);
 
         // Name and Enabled card
-        VBox metaCard = new VBox(8);
+        VBox metaCard = new VBox(10);
         metaCard.getStyleClass().add("card");
         metaCard.setPadding(new Insets(16));
 
@@ -117,6 +121,7 @@ public final class WorkflowEditorView {
 
         triggerSelector = new ComboBox<>();
         triggerSelector.getStyleClass().add("combo-box");
+        configureComboBoxFriendlyNames(triggerSelector);
         for (PluginDescriptor<?> d : registry.findByCategory(PluginCategory.TRIGGER)) {
             triggerSelector.getItems().add(d.id().value());
         }
@@ -157,7 +162,9 @@ public final class WorkflowEditorView {
         HBox.setHgrow(condSpacer, Priority.ALWAYS);
 
         Button addCondBtn = new Button("Add condition");
+        addCondBtn.setGraphic(CascadeIcons.icon("plus", 0.8, "icon-secondary"));
         addCondBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(addCondBtn);
         addCondBtn.setOnAction(e -> addConditionRow(null, null));
 
         conditionsHeader.getChildren().addAll(conditionsTitle, matchSegment, condSpacer, addCondBtn);
@@ -177,7 +184,9 @@ public final class WorkflowEditorView {
         HBox.setHgrow(actSpacer, Priority.ALWAYS);
 
         Button addActBtn = new Button("Add action");
+        addActBtn.setGraphic(CascadeIcons.icon("plus", 0.8, "icon-secondary"));
         addActBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(addActBtn);
         addActBtn.setOnAction(e -> addActionRow(null, null));
 
         actionsHeader.getChildren().addAll(actionsTitle, actSpacer, addActBtn);
@@ -197,19 +206,41 @@ public final class WorkflowEditorView {
 
         Button cancelBtn = new Button("Discard changes");
         cancelBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(cancelBtn);
         cancelBtn.setOnAction(e -> onComplete.run());
 
         Button testRunBtn = new Button("Test run");
+        testRunBtn.setGraphic(CascadeIcons.icon("play", 0.8, "icon-secondary"));
         testRunBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(testRunBtn);
         testRunBtn.setOnAction(e -> runTestExecution());
 
         Button saveBtn = new Button("Save");
+        saveBtn.setGraphic(CascadeIcons.icon("check", 0.85, "icon-primary"));
         saveBtn.getStyleClass().add("button-primary");
+        UiMotion.animateHover(saveBtn);
         saveBtn.setOnAction(e -> saveWorkflow());
 
         footer.getChildren().addAll(testRunBtn, cancelBtn, saveBtn);
 
         root.getChildren().addAll(title, scroll, footer);
+    }
+
+    private void configureComboBoxFriendlyNames(ComboBox<String> cb) {
+        cb.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : PluginDisplayNameResolver.resolve(item));
+            }
+        });
+        cb.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : PluginDisplayNameResolver.resolve(item));
+            }
+        });
     }
 
     private void populateFields() {
@@ -221,19 +252,24 @@ public final class WorkflowEditorView {
             triggerSelector.setValue(trigId);
             rebuildTriggerForm(trigId, existingWorkflow.trigger().params());
 
-            existingWorkflow.conditionSpec().ifPresent(cs -> {
-                matchAll = !ConditionSpec.TYPE_ANY_OF.equals(cs.type());
-                if (cs.isComposite()) {
-                    for (ConditionSpec child : cs.children()) {
-                        addConditionRow(child.type(), child.params());
+            existingWorkflow.conditionSpec().ifPresent(spec -> {
+                if (ConditionSpec.TYPE_ALL_OF.equals(spec.type())) {
+                    matchAll = true;
+                    for (ConditionSpec child : spec.children()) {
+                        addConditionFromSpec(child);
+                    }
+                } else if (ConditionSpec.TYPE_ANY_OF.equals(spec.type())) {
+                    matchAll = false;
+                    for (ConditionSpec child : spec.children()) {
+                        addConditionFromSpec(child);
                     }
                 } else {
-                    addConditionRow(cs.type(), cs.params());
+                    addConditionFromSpec(spec);
                 }
             });
 
-            for (PluginSpec actionSpec : existingWorkflow.actions()) {
-                addActionRow(actionSpec.pluginId().value(), actionSpec.params());
+            for (PluginSpec action : existingWorkflow.actions()) {
+                addActionRow(action.pluginId().value(), action.params());
             }
         } else {
             enabledCheckBox.setSelected(true);
@@ -260,14 +296,21 @@ public final class WorkflowEditorView {
         });
     }
 
+    private void addConditionFromSpec(ConditionSpec spec) {
+        if (!spec.isComposite()) {
+            addConditionRow(spec.type(), spec.params());
+        }
+    }
+
     private void addConditionRow(String conditionId, Map<String, Object> initialParams) {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(8));
-        row.getStyleClass().add("surface-panel");
+        row.setPadding(new Insets(10));
+        row.getStyleClass().addAll("card", "list-row");
 
         ComboBox<String> selector = new ComboBox<>();
         selector.getStyleClass().add("combo-box");
+        configureComboBoxFriendlyNames(selector);
         for (PluginDescriptor<?> d : registry.findByCategory(PluginCategory.CONDITION)) {
             if (!d.id().value().equals("all-of") && !d.id().value().equals("any-of") && !d.id().value().equals("not")) {
                 selector.getItems().add(d.id().value());
@@ -295,7 +338,9 @@ public final class WorkflowEditorView {
         updateForm.run();
 
         Button removeBtn = new Button("Remove");
+        removeBtn.setGraphic(CascadeIcons.icon("trash", 0.75, "icon-error"));
         removeBtn.getStyleClass().add("button-danger");
+        UiMotion.animateHover(removeBtn);
 
         ConditionRow condRow = new ConditionRow(selector, formBox, builderRef, row);
         conditionRows.add(condRow);
@@ -312,11 +357,12 @@ public final class WorkflowEditorView {
     private void addActionRow(String actionId, Map<String, Object> initialParams) {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(8));
-        row.getStyleClass().add("surface-panel");
+        row.setPadding(new Insets(10));
+        row.getStyleClass().addAll("card", "list-row");
 
         ComboBox<String> selector = new ComboBox<>();
         selector.getStyleClass().add("combo-box");
+        configureComboBoxFriendlyNames(selector);
         for (PluginDescriptor<?> d : registry.findByCategory(PluginCategory.ACTION)) {
             selector.getItems().add(d.id().value());
         }
@@ -342,7 +388,9 @@ public final class WorkflowEditorView {
         updateForm.run();
 
         Button removeBtn = new Button("Remove");
+        removeBtn.setGraphic(CascadeIcons.icon("trash", 0.75, "icon-error"));
         removeBtn.getStyleClass().add("button-danger");
+        UiMotion.animateHover(removeBtn);
 
         ActionRow actRow = new ActionRow(selector, formBox, builderRef, row);
         actionRows.add(actRow);
@@ -358,48 +406,28 @@ public final class WorkflowEditorView {
 
     private boolean validate() {
         boolean valid = true;
-        nameErrorLabel.setVisible(false);
-        nameErrorLabel.setManaged(false);
-
-        String name = nameField.getText().trim();
-        if (name.isEmpty()) {
+        if (nameField.getText() == null || nameField.getText().trim().isEmpty()) {
             nameErrorLabel.setText("Workflow name must not be blank.");
             nameErrorLabel.setVisible(true);
             nameErrorLabel.setManaged(true);
             valid = false;
-        } else if (name.length() > Workflow.MAX_NAME_LENGTH) {
-            nameErrorLabel.setText("Workflow name cannot exceed " + Workflow.MAX_NAME_LENGTH + " characters.");
-            nameErrorLabel.setVisible(true);
-            nameErrorLabel.setManaged(true);
-            valid = false;
+        } else {
+            nameErrorLabel.setVisible(false);
+            nameErrorLabel.setManaged(false);
         }
 
-        String trigId = triggerSelector.getValue();
-        Set<String> providedKeys = trigId != null
-                ? registry.findDescriptor(trigId).map(PluginDescriptor::providedKeys).orElse(Set.of())
-                : Set.of();
-
-        if (triggerFormBuilder != null && !triggerFormBuilder.validate(providedKeys)) {
+        if (triggerFormBuilder != null && !triggerFormBuilder.validate()) {
             valid = false;
         }
 
         for (ConditionRow cr : conditionRows) {
-            if (cr.builderRef()[0] != null && !cr.builderRef()[0].validate(providedKeys)) {
+            if (cr.builderRef()[0] != null && !cr.builderRef()[0].validate()) {
                 valid = false;
             }
         }
 
-        if (actionRows.isEmpty()) {
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle("Validation error");
-            alert.setHeaderText("No actions configured");
-            alert.setContentText("A workflow must have at least one action.");
-            alert.showAndWait();
-            valid = false;
-        }
-
         for (ActionRow ar : actionRows) {
-            if (ar.builderRef()[0] != null && !ar.builderRef()[0].validate(providedKeys)) {
+            if (ar.builderRef()[0] != null && !ar.builderRef()[0].validate()) {
                 valid = false;
             }
         }
@@ -407,12 +435,8 @@ public final class WorkflowEditorView {
         return valid;
     }
 
-    private void saveWorkflow() {
-        if (!validate()) {
-            return;
-        }
-
-        WorkflowId wid = existingWorkflow != null ? existingWorkflow.id() : WorkflowId.random();
+    private Workflow buildWorkflowObject() {
+        WorkflowId id = existingWorkflow != null ? existingWorkflow.id() : WorkflowId.random();
         String name = nameField.getText().trim();
         boolean enabled = enabledCheckBox.isSelected();
 
@@ -422,13 +446,17 @@ public final class WorkflowEditorView {
 
         ConditionSpec conditionSpec = null;
         if (!conditionRows.isEmpty()) {
-            List<ConditionSpec> children = new ArrayList<>();
+            List<ConditionSpec> leaves = new ArrayList<>();
             for (ConditionRow cr : conditionRows) {
                 String cId = cr.selector().getValue();
                 Map<String, Object> cParams = cr.builderRef()[0] != null ? cr.builderRef()[0].getValues() : Map.of();
-                children.add(ConditionSpec.leaf(cId, cParams));
+                leaves.add(ConditionSpec.leaf(cId, cParams));
             }
-            conditionSpec = matchAll ? ConditionSpec.allOf(children) : ConditionSpec.anyOf(children);
+            if (leaves.size() == 1) {
+                conditionSpec = leaves.get(0);
+            } else {
+                conditionSpec = matchAll ? ConditionSpec.allOf(leaves) : ConditionSpec.anyOf(leaves);
+            }
         }
 
         List<PluginSpec> actionSpecs = new ArrayList<>();
@@ -438,17 +466,24 @@ public final class WorkflowEditorView {
             actionSpecs.add(PluginSpec.of(aId, aParams));
         }
 
-        Workflow workflow = Workflow.builder()
-                .id(wid)
+        return Workflow.builder()
+                .id(id)
                 .name(name)
                 .enabled(enabled)
                 .trigger(triggerSpec)
                 .conditions(conditionSpec)
                 .actions(actionSpecs)
                 .build();
+    }
 
-        repository.save(workflow);
-        facade.registerWorkflow(workflow);
+    private void saveWorkflow() {
+        if (!validate()) {
+            return;
+        }
+
+        Workflow wf = buildWorkflowObject();
+        repository.save(wf);
+        facade.registerWorkflow(wf);
         onComplete.run();
     }
 
@@ -456,31 +491,15 @@ public final class WorkflowEditorView {
         if (!validate()) {
             return;
         }
-        // Build transient workflow and execute with sample event
-        String trigId = triggerSelector.getValue();
-        PluginSpec triggerSpec = PluginSpec.of(trigId, triggerFormBuilder != null ? triggerFormBuilder.getValues() : Map.of());
 
-        List<PluginSpec> actionSpecs = new ArrayList<>();
-        for (ActionRow ar : actionRows) {
-            String aId = ar.selector().getValue();
-            Map<String, Object> aParams = ar.builderRef()[0] != null ? ar.builderRef()[0].getValues() : Map.of();
-            actionSpecs.add(PluginSpec.of(aId, aParams));
-        }
-
-        Workflow tempWf = Workflow.builder()
-                .name(nameField.getText().trim())
-                .trigger(triggerSpec)
-                .actions(actionSpecs)
-                .build();
-
-        facade.registerWorkflow(tempWf);
-        RunRecord record = facade.executeWorkflowManually(tempWf.id(), Event.empty());
-        facade.unregisterWorkflow(tempWf.id());
+        Workflow wf = buildWorkflowObject();
+        facade.registerWorkflow(wf);
+        RunRecord record = facade.executeWorkflowManually(wf.id(), Event.empty());
 
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Test run complete");
         alert.setHeaderText("Outcome: " + record.outcome());
-        alert.setContentText("Executed " + record.steps().size() + " step(s) in " + record.totalDurationMs() + " ms");
+        alert.setContentText("Ran " + record.steps().size() + " step(s) in " + record.totalDurationMs() + " ms");
         alert.showAndWait();
     }
 

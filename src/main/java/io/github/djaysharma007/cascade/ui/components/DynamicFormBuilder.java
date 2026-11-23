@@ -148,6 +148,10 @@ public final class DynamicFormBuilder {
         return new FormField(spec, tf, errorLabel, getter);
     }
 
+    public boolean validate() {
+        return validate(Set.of());
+    }
+
     public boolean validate(Set<String> availablePayloadKeys) {
         boolean valid = true;
         for (FormField field : fieldMap.values()) {

@@ -8,6 +8,10 @@ import io.github.djaysharma007.cascade.engine.EngineFacade;
 import io.github.djaysharma007.cascade.engine.EngineListener;
 import io.github.djaysharma007.cascade.engine.RunRecord;
 import io.github.djaysharma007.cascade.registry.PluginRegistry;
+import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
+import io.github.djaysharma007.cascade.ui.components.ToastOverlay;
+import io.github.djaysharma007.cascade.ui.components.UiMotion;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -23,7 +27,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
 /**
- * Main application shell containing top bar, navigation sidebar, and views.
+ * Main application shell containing top bar, navigation sidebar, views, and toast overlay.
  */
 public final class MainShellView implements EngineListener {
 
@@ -31,15 +35,18 @@ public final class MainShellView implements EngineListener {
     private final WorkflowRepository repository;
     private final PluginRegistry registry;
 
+    private final StackPane shellContainer = new StackPane();
     private final BorderPane root = new BorderPane();
     private final StackPane contentArea = new StackPane();
+    private final ToastOverlay toastOverlay = new ToastOverlay();
 
     private final Label viewTitleLabel = new Label("Workflows");
     private final Button engineToggleBtn = new Button("Start engine");
     private final Label engineChip = new Label("Stopped");
+    private Timeline pulseTimeline;
 
-    private final Label navWorkflows = new Label("Workflows");
-    private final Label navActivity = new Label("Activity");
+    private final HBox navWorkflows = new HBox(8);
+    private final HBox navActivity = new HBox(8);
 
     private final Label statusWorkflowCount = new Label();
     private final Label statusEngineState = new Label();
@@ -88,6 +95,8 @@ public final class MainShellView implements EngineListener {
         // Status bar
         HBox statusBar = createStatusBar();
         root.setBottom(statusBar);
+
+        shellContainer.getChildren().addAll(root, toastOverlay);
     }
 
     private HBox createTopBar() {
@@ -119,7 +128,9 @@ public final class MainShellView implements EngineListener {
 
         engineChip.getStyleClass().addAll("chip", "chip-stopped");
 
+        engineToggleBtn.setGraphic(CascadeIcons.icon("play", 0.85, "icon-primary"));
         engineToggleBtn.getStyleClass().add("button-primary");
+        UiMotion.animateHover(engineToggleBtn);
         engineToggleBtn.setOnAction(e -> {
             if (facade.isRunning()) {
                 facade.stop();
@@ -137,17 +148,29 @@ public final class MainShellView implements EngineListener {
         sidebar.getStyleClass().add("sidebar");
 
         Button newWfBtn = new Button("New workflow");
+        newWfBtn.setGraphic(CascadeIcons.icon("plus", 0.9, "icon-primary"));
         newWfBtn.getStyleClass().add("button-primary");
         newWfBtn.setMaxWidth(Double.MAX_VALUE);
+        UiMotion.animateHover(newWfBtn);
         newWfBtn.setOnAction(e -> openNewWorkflowEditor());
 
         Region sep = new Region();
         sep.setMinHeight(16);
 
-        navWorkflows.getStyleClass().addAll("nav-item", "nav-item-active", "body-text");
+        // Nav Workflows
+        navWorkflows.setAlignment(Pos.CENTER_LEFT);
+        navWorkflows.getStyleClass().addAll("nav-item", "nav-item-active");
+        Label wfLabel = new Label("Workflows");
+        wfLabel.getStyleClass().add("body-text");
+        navWorkflows.getChildren().addAll(CascadeIcons.icon("workflows", 0.9, "icon-secondary"), wfLabel);
         navWorkflows.setOnMouseClicked(e -> showWorkflowsView());
 
-        navActivity.getStyleClass().addAll("nav-item", "body-text");
+        // Nav Activity
+        navActivity.setAlignment(Pos.CENTER_LEFT);
+        navActivity.getStyleClass().addAll("nav-item");
+        Label actLabel = new Label("Activity");
+        actLabel.getStyleClass().add("body-text");
+        navActivity.getChildren().addAll(CascadeIcons.icon("activity", 0.9, "icon-secondary"), actLabel);
         navActivity.setOnMouseClicked(e -> showActivityView());
 
         sidebar.getChildren().addAll(newWfBtn, sep, navWorkflows, navActivity);
@@ -172,6 +195,7 @@ public final class MainShellView implements EngineListener {
         navActivity.getStyleClass().remove("nav-item-active");
         workflowsView.refresh();
         contentArea.getChildren().setAll(workflowsView.getNode());
+        UiMotion.pageTransition(workflowsView.getNode());
         updateStatusCounts();
     }
 
@@ -181,6 +205,7 @@ public final class MainShellView implements EngineListener {
         navWorkflows.getStyleClass().remove("nav-item-active");
         activityView.refresh();
         contentArea.getChildren().setAll(activityView.getNode());
+        UiMotion.pageTransition(activityView.getNode());
     }
 
     public void openNewWorkflowEditor() {
@@ -196,6 +221,7 @@ public final class MainShellView implements EngineListener {
                 this::showWorkflowsView
         );
         contentArea.getChildren().setAll(editorView.getNode());
+        UiMotion.pageTransition(editorView.getNode());
     }
 
     public void openEditWorkflowEditor(Workflow workflow) {
@@ -211,18 +237,28 @@ public final class MainShellView implements EngineListener {
                 this::showWorkflowsView
         );
         contentArea.getChildren().setAll(editorView.getNode());
+        UiMotion.pageTransition(editorView.getNode());
     }
 
     private void updateEngineStatus(boolean running) {
+        if (pulseTimeline != null) {
+            pulseTimeline.stop();
+            pulseTimeline = null;
+        }
+
         if (running) {
             engineChip.setText("Running");
             engineChip.getStyleClass().setAll("chip", "chip-running");
             engineToggleBtn.setText("Stop engine");
+            engineToggleBtn.setGraphic(CascadeIcons.icon("stop", 0.85, "icon-primary"));
             statusEngineState.setText("Engine running");
+            pulseTimeline = UiMotion.pulse(engineChip);
         } else {
             engineChip.setText("Stopped");
             engineChip.getStyleClass().setAll("chip", "chip-stopped");
+            engineChip.setOpacity(1.0);
             engineToggleBtn.setText("Start engine");
+            engineToggleBtn.setGraphic(CascadeIcons.icon("play", 0.85, "icon-primary"));
             statusEngineState.setText("Engine stopped");
         }
     }
@@ -230,6 +266,10 @@ public final class MainShellView implements EngineListener {
     private void updateStatusCounts() {
         long enabledCount = facade.allWorkflows().stream().filter(Workflow::enabled).count();
         statusWorkflowCount.setText(enabledCount + " workflow" + (enabledCount == 1 ? "" : "s") + " enabled");
+    }
+
+    public void showToast(String message, ToastOverlay.Type type) {
+        toastOverlay.showToast(message, type);
     }
 
     @Override
@@ -251,7 +291,7 @@ public final class MainShellView implements EngineListener {
     }
 
     public Node getNode() {
-        return root;
+        return shellContainer;
     }
 
     public WorkflowsView getWorkflowsView() {
@@ -260,5 +300,9 @@ public final class MainShellView implements EngineListener {
 
     public ActivityView getActivityView() {
         return activityView;
+    }
+
+    public ToastOverlay getToastOverlay() {
+        return toastOverlay;
     }
 }

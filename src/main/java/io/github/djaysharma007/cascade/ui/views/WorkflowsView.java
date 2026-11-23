@@ -5,6 +5,10 @@ import io.github.djaysharma007.cascade.core.Workflow;
 import io.github.djaysharma007.cascade.core.WorkflowRepository;
 import io.github.djaysharma007.cascade.engine.EngineFacade;
 import io.github.djaysharma007.cascade.engine.RunRecord;
+import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
+import io.github.djaysharma007.cascade.ui.components.PluginDisplayNameResolver;
+import io.github.djaysharma007.cascade.ui.components.ToggleSwitch;
+import io.github.djaysharma007.cascade.ui.components.UiMotion;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -23,7 +27,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
- * Workflows listing view showing all configured automations and status.
+ * Workflows listing view showing all configured automations with smooth interaction.
  */
 public final class WorkflowsView {
 
@@ -33,7 +37,7 @@ public final class WorkflowsView {
     private final Consumer<Workflow> onEditWorkflow;
 
     private final VBox root = new VBox(16);
-    private final VBox listContainer = new VBox(8);
+    private final VBox listContainer = new VBox(12);
     private final VBox alertContainer = new VBox(8);
 
     public WorkflowsView(
@@ -65,7 +69,9 @@ public final class WorkflowsView {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button newBtn = new Button("New workflow");
+        newBtn.setGraphic(CascadeIcons.icon("plus", 0.9, "icon-primary"));
         newBtn.getStyleClass().add("button-primary");
+        UiMotion.animateHover(newBtn);
         newBtn.setOnAction(e -> onNewWorkflow.run());
 
         header.getChildren().addAll(title, spacer, newBtn);
@@ -103,8 +109,9 @@ public final class WorkflowsView {
             listContainer.getChildren().add(createEmptyState());
         } else {
             for (Workflow wf : workflows) {
-                listContainer.getChildren().add(createWorkflowRow(wf));
+                listContainer.getChildren().add(createWorkflowCard(wf));
             }
+            UiMotion.staggerFadeIn(listContainer.getChildren());
         }
     }
 
@@ -112,6 +119,9 @@ public final class WorkflowsView {
         VBox empty = new VBox(16);
         empty.setAlignment(Pos.CENTER);
         empty.setPadding(new Insets(64, 24, 64, 24));
+        empty.getStyleClass().add("card");
+
+        var emptyIcon = CascadeIcons.icon("workflows", 2.0, "icon-muted");
 
         Label header = new Label("Workflows run automatically when triggered");
         header.getStyleClass().add("section-title");
@@ -120,24 +130,30 @@ public final class WorkflowsView {
         sub.getStyleClass().add("secondary-text");
 
         Button createBtn = new Button("New workflow");
+        createBtn.setGraphic(CascadeIcons.icon("plus", 0.9, "icon-primary"));
         createBtn.getStyleClass().add("button-primary");
+        UiMotion.animateHover(createBtn);
         createBtn.setOnAction(e -> onNewWorkflow.run());
 
-        empty.getChildren().addAll(header, sub, createBtn);
+        empty.getChildren().addAll(emptyIcon, header, sub, createBtn);
         return empty;
     }
 
-    private Node createWorkflowRow(Workflow wf) {
+    private Node createWorkflowCard(Workflow wf) {
         HBox row = new HBox(16);
-        row.getStyleClass().add("list-row");
+        row.getStyleClass().addAll("card", "list-row");
+        row.setPadding(new Insets(12, 16, 12, 16));
         row.setAlignment(Pos.CENTER_LEFT);
+
+        var wfIcon = CascadeIcons.icon("workflows", 1.0, "icon-teal");
 
         VBox titleBox = new VBox(2);
         Label name = new Label(wf.name());
         name.getStyleClass().add("body-text");
         name.setStyle("-fx-font-weight: bold;");
 
-        Label triggerDesc = new Label("Trigger: " + wf.trigger().pluginId().value());
+        String friendlyTrigger = PluginDisplayNameResolver.resolve(wf.trigger().pluginId().value());
+        Label triggerDesc = new Label("Trigger: " + friendlyTrigger);
         triggerDesc.getStyleClass().add("caption-text");
         titleBox.getChildren().addAll(name, triggerDesc);
 
@@ -148,21 +164,12 @@ public final class WorkflowsView {
         Label chip = new Label(wf.enabled() ? "Enabled" : "Disabled");
         chip.getStyleClass().addAll("chip", wf.enabled() ? "chip-enabled" : "chip-disabled");
 
-        // Toggle button
-        Button toggleBtn = new Button(wf.enabled() ? "Disable" : "Enable");
-        toggleBtn.getStyleClass().add("button-secondary");
-        toggleBtn.setOnAction(e -> {
-            if (wf.enabled()) {
-                facade.disableWorkflow(wf.id());
-                repository.save(Workflow.builder()
-                        .id(wf.id())
-                        .name(wf.name())
-                        .enabled(false)
-                        .trigger(wf.trigger())
-                        .conditions(wf.conditionSpec().orElse(null))
-                        .actions(wf.actions())
-                        .build());
-            } else {
+        // Toggle switch
+        ToggleSwitch toggle = new ToggleSwitch(wf.enabled());
+        toggle.selectedProperty().addListener((obs, oldV, isSel) -> {
+            chip.setText(isSel ? "Enabled" : "Disabled");
+            chip.getStyleClass().setAll("chip", isSel ? "chip-enabled" : "chip-disabled");
+            if (isSel) {
                 facade.enableWorkflow(wf.id());
                 repository.save(Workflow.builder()
                         .id(wf.id())
@@ -172,13 +179,24 @@ public final class WorkflowsView {
                         .conditions(wf.conditionSpec().orElse(null))
                         .actions(wf.actions())
                         .build());
+            } else {
+                facade.disableWorkflow(wf.id());
+                repository.save(Workflow.builder()
+                        .id(wf.id())
+                        .name(wf.name())
+                        .enabled(false)
+                        .trigger(wf.trigger())
+                        .conditions(wf.conditionSpec().orElse(null))
+                        .actions(wf.actions())
+                        .build());
             }
-            refresh();
         });
 
         // Run test button
-        Button runBtn = new Button("Run test");
+        Button runBtn = new Button("Run");
+        runBtn.setGraphic(CascadeIcons.icon("play", 0.8, "icon-secondary"));
         runBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(runBtn);
         runBtn.setOnAction(e -> {
             RunRecord record = facade.executeWorkflowManually(wf.id(), Event.empty());
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -190,12 +208,16 @@ public final class WorkflowsView {
 
         // Edit button
         Button editBtn = new Button("Edit");
+        editBtn.setGraphic(CascadeIcons.icon("editor", 0.8, "icon-secondary"));
         editBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(editBtn);
         editBtn.setOnAction(e -> onEditWorkflow.accept(wf));
 
         // Delete button
         Button delBtn = new Button("Delete");
+        delBtn.setGraphic(CascadeIcons.icon("trash", 0.8, "icon-error"));
         delBtn.getStyleClass().add("button-danger");
+        UiMotion.animateHover(delBtn);
         delBtn.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
             confirm.setTitle("Confirm delete");
@@ -209,7 +231,7 @@ public final class WorkflowsView {
             }
         });
 
-        row.getChildren().addAll(titleBox, spacer, chip, toggleBtn, runBtn, editBtn, delBtn);
+        row.getChildren().addAll(wfIcon, titleBox, spacer, chip, toggle, runBtn, editBtn, delBtn);
         return row;
     }
 
