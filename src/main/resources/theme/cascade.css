@@ -651,4 +651,46 @@
     -fx-text-fill: -color-text-secondary;
 }
 
+/* BarChart styling */
+.chart {
+    -fx-padding: 0px;
+    -fx-background-color: transparent;
+}
+
+.chart-content {
+    -fx-padding: 8px;
+}
+
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+.chart-vertical-grid-lines {
+    -fx-stroke: transparent;
+}
+
+.chart-horizontal-grid-lines {
+    -fx-stroke: derive(#124B50, -40%);
+}
+
+.axis {
+    -fx-tick-label-fill: -color-text-secondary;
+    -fx-tick-label-font-size: 11px;
+    -fx-tick-mark-stroke: transparent;
+    -fx-axis-line-stroke: -color-border;
+}
+
+.chart-bar {
+    -fx-bar-fill: -color-accent;
+    -fx-background-color: -color-accent;
+    -fx-background-radius: 4px 4px 0 0;
+}
+
+.chart-bar:hover {
+    -fx-bar-fill: -color-accent-bright;
+    -fx-background-color: -color-accent-bright;
+    -fx-effect: dropshadow(gaussian, rgba(100, 233, 238, 0.4), 8, 0.0, 0, 0);
+}
+
+
 

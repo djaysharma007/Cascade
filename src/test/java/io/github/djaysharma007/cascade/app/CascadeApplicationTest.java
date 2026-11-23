@@ -127,7 +127,16 @@ class CascadeApplicationTest {
         MainShellView shell = shellRef.get();
         Scene scene = sceneRef.get();
 
-        // 1. Capture populated Workflows View (with seeded "Sort assignments" workflow)
+        // 0. Capture default screen: Dashboard View
+        saveSnapshot(scene, "v1_1_dashboard.png");
+
+        // 1. Switch to Workflows View and capture
+        CountDownLatch wfLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            shell.showWorkflowsView();
+            wfLatch.countDown();
+        });
+        assertThat(wfLatch.await(5, TimeUnit.SECONDS)).isTrue();
         saveSnapshot(scene, "phase5_workflows_populated.png");
 
         // 2. Open Editor view and capture
