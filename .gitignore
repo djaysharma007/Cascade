@@ -7,5 +7,6 @@ target/
 .project
 .classpath
 *.log
+dependency-reduced-pom.xml
 .DS_Store
 Thumbs.db

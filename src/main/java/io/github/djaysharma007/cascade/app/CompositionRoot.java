@@ -8,6 +8,7 @@ import io.github.djaysharma007.cascade.engine.EngineFacade;
 import io.github.djaysharma007.cascade.engine.WorkflowEngine;
 import io.github.djaysharma007.cascade.plugins.BuiltinPlugins;
 import io.github.djaysharma007.cascade.registry.PluginRegistry;
+import io.github.djaysharma007.cascade.settings.SettingsService;
 import io.github.djaysharma007.cascade.storage.JsonWorkflowRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,12 +28,17 @@ public final class CompositionRoot {
     private final WorkflowRepository repository;
     private final WorkflowEngine engine;
     private final EngineFacade facade;
+    private final SettingsService settingsService;
 
     public CompositionRoot() {
         this(Path.of(System.getProperty("user.home"), ".cascade", "workflows"));
     }
 
     public CompositionRoot(Path workflowsDir) {
+        this(workflowsDir, (workflowsDir.getParent() != null ? workflowsDir.getParent() : Path.of(".")).resolve("settings.json"));
+    }
+
+    public CompositionRoot(Path workflowsDir, Path settingsFile) {
         log.info("Initializing CompositionRoot with workflows dir: {}", workflowsDir);
         this.registry = new PluginRegistry();
         BuiltinPlugins.registerAll(registry);
@@ -40,6 +46,7 @@ public final class CompositionRoot {
         this.repository = new JsonWorkflowRepository(workflowsDir);
         this.engine = new WorkflowEngine(registry);
         this.facade = new EngineFacade(engine);
+        this.settingsService = new SettingsService(settingsFile);
 
         loadInitialWorkflows();
     }
@@ -83,5 +90,9 @@ public final class CompositionRoot {
 
     public EngineFacade facade() {
         return facade;
+    }
+
+    public SettingsService settingsService() {
+        return settingsService;
     }
 }

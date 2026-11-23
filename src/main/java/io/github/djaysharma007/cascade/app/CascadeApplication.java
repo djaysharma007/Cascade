@@ -2,6 +2,7 @@ package io.github.djaysharma007.cascade.app;
 
 import io.github.djaysharma007.cascade.ui.views.MainShellView;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
@@ -24,16 +25,45 @@ public class CascadeApplication extends Application {
 
     private CompositionRoot compositionRoot;
     private MainShellView mainShell;
+    private SingleInstanceLock singleInstanceLock;
+    private SystemTrayManager trayManager;
+    private Stage primaryStage;
+    private boolean backgroundMode = false;
 
     @Override
     public void init() {
         log.info("Initializing Cascade application composition root");
         this.compositionRoot = new CompositionRoot();
+
+        Parameters params = getParameters();
+        if (params != null && (params.getRaw().contains("--background") || params.getUnnamed().contains("--background"))) {
+            this.backgroundMode = true;
+        }
+
+        if (!Boolean.getBoolean("cascade.disable.lock")) {
+            this.singleInstanceLock = new SingleInstanceLock(() -> {
+                Platform.runLater(() -> {
+                    if (primaryStage != null) {
+                        primaryStage.show();
+                        primaryStage.toFront();
+                    }
+                });
+            });
+
+            if (!singleInstanceLock.tryAcquire()) {
+                log.info("Secondary instance exiting as running instance was activated.");
+                Platform.exit();
+                System.exit(0);
+            }
+        }
     }
 
     @Override
     public void start(Stage primaryStage) {
-        log.info("Starting Cascade application window");
+        this.primaryStage = primaryStage;
+        Platform.setImplicitExit(false);
+
+        log.info("Starting Cascade application window (backgroundMode={})", backgroundMode);
         loadBundledFonts();
 
         this.mainShell = new MainShellView(
@@ -54,16 +84,56 @@ public class CascadeApplication extends Application {
         primaryStage.setMinWidth(MIN_WIDTH);
         primaryStage.setMinHeight(MIN_HEIGHT);
         primaryStage.setScene(scene);
-        primaryStage.show();
-        log.info("Cascade application window displayed");
+
+        if (!Boolean.getBoolean("cascade.disable.tray")) {
+            this.trayManager = new SystemTrayManager(
+                    compositionRoot.facade(),
+                    () -> Platform.runLater(() -> {
+                        primaryStage.show();
+                        primaryStage.toFront();
+                    }),
+                    this::shutdownAndQuit
+            );
+            trayManager.initTray();
+        }
+
+        primaryStage.setOnCloseRequest(e -> {
+            boolean keepRunning = compositionRoot.settingsService().getSettings().keepRunningInTray();
+            if (keepRunning && trayManager != null) {
+                e.consume();
+                primaryStage.hide();
+                trayManager.showFirstTimeNotification();
+            } else {
+                shutdownAndQuit();
+            }
+        });
+
+        if (backgroundMode) {
+            compositionRoot.facade().start();
+            log.info("Cascade started in background tray mode");
+        } else {
+            primaryStage.show();
+            log.info("Cascade application window displayed");
+        }
+    }
+
+    public void shutdownAndQuit() {
+        log.info("Shutting down Cascade application cleanly");
+        if (trayManager != null) {
+            trayManager.removeTray();
+        }
+        if (singleInstanceLock != null) {
+            singleInstanceLock.release();
+        }
+        if (compositionRoot != null && compositionRoot.facade().isRunning()) {
+            compositionRoot.facade().stop();
+        }
+        Platform.exit();
     }
 
     @Override
     public void stop() {
-        log.info("Stopping Cascade application");
-        if (compositionRoot != null && compositionRoot.facade().isRunning()) {
-            compositionRoot.facade().stop();
-        }
+        shutdownAndQuit();
     }
 
     public MainShellView getMainShell() {
@@ -72,6 +142,14 @@ public class CascadeApplication extends Application {
 
     public CompositionRoot getCompositionRoot() {
         return compositionRoot;
+    }
+
+    public SystemTrayManager getTrayManager() {
+        return trayManager;
+    }
+
+    public boolean isBackgroundMode() {
+        return backgroundMode;
     }
 
     private void loadBundledFonts() {

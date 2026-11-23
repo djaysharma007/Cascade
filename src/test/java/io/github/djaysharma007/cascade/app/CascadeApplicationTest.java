@@ -42,6 +42,8 @@ class CascadeApplicationTest {
 
     @BeforeAll
     static synchronized void initPlatform() {
+        System.setProperty("cascade.disable.lock", "true");
+        System.setProperty("cascade.disable.tray", "true");
         if (!platformStarted) {
             try {
                 Platform.startup(() -> {});
