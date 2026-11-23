@@ -6,6 +6,9 @@ import io.github.djaysharma007.cascade.engine.EngineFacade;
 import io.github.djaysharma007.cascade.engine.RunOutcome;
 import io.github.djaysharma007.cascade.engine.RunRecord;
 import io.github.djaysharma007.cascade.engine.StepRecord;
+import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
+import io.github.djaysharma007.cascade.ui.components.PluginDisplayNameResolver;
+import io.github.djaysharma007.cascade.ui.components.UiMotion;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -71,8 +74,10 @@ public final class ActivityView {
         wfCol.setPrefWidth(200);
 
         TableColumn<RunRecord, String> triggerCol = new TableColumn<>("Trigger");
-        triggerCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().triggerSummary()));
-        triggerCol.setPrefWidth(120);
+        triggerCol.setCellValueFactory(data -> new SimpleStringProperty(
+                PluginDisplayNameResolver.resolve(data.getValue().triggerSummary())
+        ));
+        triggerCol.setPrefWidth(140);
 
         TableColumn<RunRecord, String> outcomeCol = new TableColumn<>("Outcome");
         outcomeCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().outcome().name()));
@@ -95,11 +100,13 @@ public final class ActivityView {
         // Empty state
         emptyState.setAlignment(Pos.CENTER);
         emptyState.setPadding(new Insets(64, 24, 64, 24));
+        emptyState.getStyleClass().add("card");
+        var actIcon = CascadeIcons.icon("activity", 2.0, "icon-muted");
         Label emptyTitle = new Label("No workflow runs recorded yet");
         emptyTitle.getStyleClass().add("section-title");
         Label emptySub = new Label("Runs appear here automatically when triggers fire.");
         emptySub.getStyleClass().add("secondary-text");
-        emptyState.getChildren().addAll(emptyTitle, emptySub);
+        emptyState.getChildren().addAll(actIcon, emptyTitle, emptySub);
 
         // Detail panel setup
         detailPanel.getStyleClass().add("detail-panel");
@@ -143,7 +150,9 @@ public final class ActivityView {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button closeBtn = new Button("Close");
+        closeBtn.setGraphic(CascadeIcons.icon("close", 0.75, "icon-secondary"));
         closeBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(closeBtn);
         closeBtn.setOnAction(e -> {
             tableView.getSelectionModel().clearSelection();
             root.setRight(null);
@@ -163,7 +172,8 @@ public final class ActivityView {
         Label runId = new Label("ID: " + run.id().value());
         runId.getStyleClass().add("code-text");
 
-        Label triggerLabel = new Label("Trigger: " + run.triggerSummary());
+        String friendlyTrigger = PluginDisplayNameResolver.resolve(run.triggerSummary());
+        Label triggerLabel = new Label("Trigger: " + friendlyTrigger);
         triggerLabel.getStyleClass().add("secondary-text");
 
         Label outcomeLabel = new Label("Outcome: " + run.outcome());
@@ -195,7 +205,8 @@ public final class ActivityView {
                 stepCard.getStyleClass().add("step-timeline-notrun");
             }
 
-            Label stepHeader = new Label((step.stepIndex() + 1) + ". " + step.actionName());
+            String friendlyAction = PluginDisplayNameResolver.resolve(step.actionName());
+            Label stepHeader = new Label((step.stepIndex() + 1) + ". " + friendlyAction);
             stepHeader.getStyleClass().add("body-text");
             stepHeader.setStyle("-fx-font-weight: bold;");
 
@@ -273,7 +284,8 @@ public final class ActivityView {
                 .orElse(null);
 
         if (failedStep != null && failedStep.result() instanceof ExecutionResult.Failed f) {
-            Label msgLabel = new Label(failedStep.actionName() + ": " + f.failure().message());
+            String friendlyAction = PluginDisplayNameResolver.resolve(failedStep.actionName());
+            Label msgLabel = new Label(friendlyAction + ": " + f.failure().message());
             msgLabel.getStyleClass().add("body-text");
             msgLabel.setStyle("-fx-text-fill: -color-error;");
             msgLabel.setWrapText(true);

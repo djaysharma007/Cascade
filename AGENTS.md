@@ -31,16 +31,18 @@ These rules apply to every task. In phase 0 the agent copies this section and se
 - Javadoc is mandatory on every contract interface and on every public type in `core`, and states pre- and postconditions.
 - Every behaviour change ships with a test in the same commit.
 
-### Interface quality (what separates this from template output)
+### Interface quality (v1.1 upgrade specification)
 
-- Use only the tokens in section 10. No raw hex, no default JavaFX (Modena) styling visible, no default focus ring, no stock blue.
+- Use only the tokens in section 10 and 18. No raw hex outside CSS, no default JavaFX (Modena) styling visible, no default focus ring, no stock blue.
 - Spacing comes from the 4 px scale only. Align everything to the grid; equal gaps for equal relationships. Misaligned edges are defects.
-- No gradients, glows, glassmorphism, neon outlines, drop shadows on cards, decorative blobs or illustrations. Electric Aqua stays within its 5% budget.
-- One icon set, one weight. No emoji anywhere: UI, logs, comments, commit messages, README.
+- Visual depth: soft shadows on cards, dialogs and popups; faint accent glow only on live or active elements; subtle gradient allowed on primary buttons and page headers. No neon, no glassmorphism, no emoji.
+- One icon set, one weight, using crisp vector shapes. No emoji anywhere: UI, logs, comments, commit messages, README.
+- Show friendly display names everywhere ("File created", "Move file") and never raw ids like file-created.
+- Smooth animation using the JavaFX transition and Timeline API, 120 to 250 ms with ease-out: page transitions (fade plus a short slide), hover and press feedback on every button, a toggle switch whose thumb slides, list rows that fade in with a short stagger, toasts that slide in, smooth expand and collapse, a pulsing live-run indicator, and animated counters on the dashboard. Add a "Reduce motion" setting that turns animation off.
 - Every list, table and form has designed empty, loading, error and populated states.
 - Controls look and behave consistently: same height, radius, hover, pressed, focus and disabled states everywhere. Build each component once in `ui/components` and reuse it.
 - Every interactive element is keyboard reachable with a visible focus state and a meaningful accessible name.
-- Animations follow section 10 only; nothing moves without a purpose.
+
 
 ### Copy
 

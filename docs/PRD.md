@@ -574,3 +574,36 @@ One developer working with an agent builds in this order. A phase is finished on
 ### Future scope
 
 Not built in v1, but the design leaves room for each: circuit breaker and saga-style compensation, a SQLite repository, plugin JARs loaded at runtime, headless mode with start at boot, branching and nested condition groups in the editor, a REST layer with a web interface, a message queue between triggers and workers, and multi-user deployment with observability metrics.
+
+## 18. v1.1 upgrade
+
+The v1.1 upgrade elevates Cascade into a premium desktop automation application with enhanced aesthetics, fluid animations, and high-value workflow automation capabilities.
+
+### 18.1 Design and Motion System
+- **Visual Depth**: Refined Dark Teal palette incorporating soft Gaussian drop shadows on cards, dialogs, and popups; a faint accent glow on live/active indicators; subtle gradients on primary call-to-action buttons and page headers. No neon outlines, no glassmorphism, and strictly no emoji.
+- **Micro-interactions & Animation**: Smooth 120-250 ms transitions with `Interpolator.EASE_OUT` using JavaFX Transition and Timeline APIs. Includes:
+  - Page transitions: subtle fade combined with short translateY slide.
+  - Interactive controls: hover/press scale and color feedback; toggle switch with sliding thumb.
+  - Data presentation: staggered row fade-ins, sliding toast notifications, smooth accordion expand/collapse, pulsing live-run indicator, and animated dashboard counters.
+  - Motion accessibility: a global "Reduce motion" preference that disables motion effects immediately.
+- **Typography and Layout**: Generous spacing following the 4 px baseline grid, card-based views, clean borders without table grid lines, consistent corner radii, vector SVG icon set, friendly human-readable display names across all screens (never raw plugin IDs).
+- **Comprehensive Screen States**: Explicit, designed empty, loading (skeleton placeholders), error (actionable messages), and populated states for every view.
+
+### 18.2 Feature Roadmap
+1. **Dashboard Home Screen**: Default start screen featuring KPI stat cards (runs today, success rate, active workflows, failure count), an interactive 7-day run history chart, and a live recent-activity feed.
+2. **Visual Flow Editor**: Interactive node-card editor representing triggers, conditions, and actions connected by visual step flow connectors, supporting animated insertion, deletion, and drag-and-drop reordering with embedded dynamic parameter forms.
+3. **Template Gallery**: Ready-to-use automation workflows (including Downloads organizer, screenshot sorter, photo backup, clean desktop, auto-archive, PDF pipeline) with one-click cloning to an editable workflow.
+4. **Expanded Plugin Ecosystem**:
+   - Triggers: `schedule` (cron/time-of-day daily/weekly) and `file-modified`.
+   - Actions: `copy-file`, `rename-file` (pattern-based with placeholders), `delete-file` (safe desktop Recycle Bin trash only), `run-program` (process execution with timeout), `desktop-notification` (native toast), `http-webhook` (HTTP client POST/GET), and `send-email` (SMTP delivery).
+5. **Undo Last Run**: Command pattern with reversible mutations for `Move`, `Copy`, and `Rename` operations, exposing an Undo action in Activity view with toast confirmation.
+6. **System Tray & Background Running**:
+   - Minimized to system tray on window close with persistent engine execution.
+   - Context tray menu (Open Cascade, Start/Stop engine, Quit). First-time minimize toast notification.
+   - Settings toggles: "Keep running in the tray when the window is closed" (default true) and "Start Cascade when Windows starts" (HKCU Run key for packaged runnable JAR with `--background`, dev mode fallback detection).
+   - Executable self-contained runnable JAR build via `mvnw package`.
+7. **Command Palette & Settings & Portability**:
+   - `Ctrl+K` quick navigation and action launcher.
+   - Dedicated Settings view for concurrency limits, timeouts, retries, motion preferences, and tray behavior.
+   - Workflow import and export as JSON files.
+
