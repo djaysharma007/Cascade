@@ -8,6 +8,7 @@ import io.github.djaysharma007.cascade.engine.RunRecord;
 import io.github.djaysharma007.cascade.engine.StepRecord;
 import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
 import io.github.djaysharma007.cascade.ui.components.PluginDisplayNameResolver;
+import io.github.djaysharma007.cascade.ui.components.ToastOverlay;
 import io.github.djaysharma007.cascade.ui.components.UiMotion;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
@@ -16,6 +17,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.BorderPane;
@@ -27,6 +29,7 @@ import javafx.scene.layout.VBox;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 /**
  * Activity log view with run table and step timeline detail panel.
@@ -37,13 +40,19 @@ public final class ActivityView {
             .withZone(ZoneId.systemDefault());
 
     private final EngineFacade facade;
+    private final BiConsumer<String, ToastOverlay.Type> toastConsumer;
     private final BorderPane root = new BorderPane();
     private final TableView<RunRecord> tableView = new TableView<>();
     private final VBox emptyState = new VBox(16);
     private final VBox detailPanel = new VBox(16);
 
     public ActivityView(EngineFacade facade) {
+        this(facade, null);
+    }
+
+    public ActivityView(EngineFacade facade, BiConsumer<String, ToastOverlay.Type> toastConsumer) {
         this.facade = facade;
+        this.toastConsumer = toastConsumer;
         buildView();
         refresh();
     }
@@ -87,7 +96,46 @@ public final class ActivityView {
         durationCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().totalDurationMs() + " ms"));
         durationCol.setPrefWidth(100);
 
-        tableView.getColumns().addAll(timeCol, wfCol, triggerCol, outcomeCol, durationCol);
+        TableColumn<RunRecord, Void> actionCol = new TableColumn<>("Actions");
+        actionCol.setPrefWidth(100);
+        actionCol.setCellFactory(col -> new TableCell<>() {
+            private final Button undoBtn = new Button("Undo");
+            {
+                undoBtn.getStyleClass().add("button-secondary");
+                undoBtn.setStyle("-fx-padding: 2px 8px; -fx-font-size: 11px;");
+                undoBtn.setGraphic(CascadeIcons.icon("undo", 0.7, "icon-secondary"));
+                UiMotion.animateHover(undoBtn);
+                undoBtn.setOnAction(e -> {
+                    RunRecord run = getTableRow() != null ? getTableRow().getItem() : null;
+                    if (run != null) {
+                        performUndo(run);
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                    setGraphic(null);
+                } else {
+                    RunRecord run = getTableRow().getItem();
+                    if (facade.isRunUndone(run.id())) {
+                        undoBtn.setText("Undone");
+                        undoBtn.setDisable(true);
+                        setGraphic(undoBtn);
+                    } else if (facade.canUndo(run)) {
+                        undoBtn.setText("Undo");
+                        undoBtn.setDisable(false);
+                        setGraphic(undoBtn);
+                    } else {
+                        setGraphic(null);
+                    }
+                }
+            }
+        });
+
+        tableView.getColumns().addAll(timeCol, wfCol, triggerCol, outcomeCol, durationCol, actionCol);
 
         tableView.getSelectionModel().selectedItemProperty().addListener((obs, oldV, selected) -> {
             if (selected != null) {
@@ -149,6 +197,21 @@ public final class ActivityView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button undoBtn = new Button("Undo run");
+        undoBtn.setGraphic(CascadeIcons.icon("undo", 0.75, "icon-secondary"));
+        undoBtn.getStyleClass().add("button-secondary");
+        UiMotion.animateHover(undoBtn);
+
+        if (facade.isRunUndone(run.id())) {
+            undoBtn.setText("Undone");
+            undoBtn.setDisable(true);
+        } else if (facade.canUndo(run)) {
+            undoBtn.setOnAction(e -> performUndo(run));
+        } else {
+            undoBtn.setVisible(false);
+            undoBtn.setManaged(false);
+        }
+
         Button closeBtn = new Button("Close");
         closeBtn.setGraphic(CascadeIcons.icon("close", 0.75, "icon-secondary"));
         closeBtn.getStyleClass().add("button-secondary");
@@ -158,7 +221,7 @@ public final class ActivityView {
             root.setRight(null);
         });
 
-        detailHeader.getChildren().addAll(title, spacer, closeBtn);
+        detailHeader.getChildren().addAll(title, spacer, undoBtn, closeBtn);
 
         // Metadata box
         VBox metaBox = new VBox(6);
@@ -308,6 +371,21 @@ public final class ActivityView {
         return failureCard;
     }
 
+    public void performUndo(RunRecord run) {
+        try {
+            facade.undoRun(run);
+            if (toastConsumer != null) {
+                toastConsumer.accept("Run undone successfully", ToastOverlay.Type.SUCCESS);
+            }
+            refresh();
+            showDetailPanel(run);
+        } catch (Exception e) {
+            if (toastConsumer != null) {
+                toastConsumer.accept("Undo failed: " + e.getMessage(), ToastOverlay.Type.ERROR);
+            }
+        }
+    }
+
     private String getChipStyle(String status) {
         return switch (status.toUpperCase()) {
             case "SUCCEEDED" -> "chip-succeeded";
@@ -320,5 +398,9 @@ public final class ActivityView {
 
     public Node getNode() {
         return root;
+    }
+
+    public TableView<RunRecord> getTableView() {
+        return tableView;
     }
 }

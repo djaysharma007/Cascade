@@ -1,10 +1,13 @@
 package io.github.djaysharma007.cascade.engine;
 
 import io.github.djaysharma007.cascade.core.Event;
+import io.github.djaysharma007.cascade.core.RunId;
 import io.github.djaysharma007.cascade.core.Workflow;
 import io.github.djaysharma007.cascade.core.WorkflowId;
 import io.github.djaysharma007.cascade.core.WorkflowState;
+import io.github.djaysharma007.cascade.engine.undo.UndoService;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -15,6 +18,7 @@ import java.util.Optional;
 public final class EngineFacade {
 
     private final WorkflowEngine engine;
+    private final UndoService undoService = new UndoService();
 
     public EngineFacade(WorkflowEngine engine) {
         this.engine = Objects.requireNonNull(engine, "engine must not be null");
@@ -74,5 +78,21 @@ public final class EngineFacade {
 
     public void removeListener(EngineListener listener) {
         engine.removeListener(listener);
+    }
+
+    public boolean canUndo(RunRecord run) {
+        return undoService.canUndo(run);
+    }
+
+    public boolean isRunUndone(RunId runId) {
+        return undoService.isUndone(runId);
+    }
+
+    public void undoRun(RunRecord run) throws IOException {
+        undoService.undoRun(run);
+    }
+
+    public UndoService getUndoService() {
+        return undoService;
     }
 }

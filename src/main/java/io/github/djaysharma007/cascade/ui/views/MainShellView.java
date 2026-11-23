@@ -86,7 +86,7 @@ public final class MainShellView implements EngineListener {
                 this::openEditWorkflowEditor
         );
         templateGalleryView = new TemplateGalleryView(this::openWorkflowEditorFromTemplate);
-        activityView = new ActivityView(facade);
+        activityView = new ActivityView(facade, this::showToast);
     }
 
     private void buildShell() {
