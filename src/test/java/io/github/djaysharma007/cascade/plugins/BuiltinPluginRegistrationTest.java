@@ -42,9 +42,10 @@ class BuiltinPluginRegistrationTest {
     @Test
     void expectedPluginsArePresent() {
         List<String> expectedIds = List.of(
-                "manual", "timer", "file-created",
+                "manual", "timer", "file-created", "file-modified", "schedule",
                 "extension-is", "name-contains", "file-size-over", "all-of", "any-of", "not",
-                "move-file", "print-message"
+                "move-file", "print-message", "copy-file", "rename-file", "delete-file",
+                "run-program", "desktop-notification", "http-webhook", "send-email"
         );
 
         for (String id : expectedIds) {
@@ -53,8 +54,8 @@ class BuiltinPluginRegistrationTest {
                     .isPresent();
         }
 
-        assertThat(registry.findByCategory(PluginCategory.TRIGGER)).hasSize(3);
+        assertThat(registry.findByCategory(PluginCategory.TRIGGER)).hasSize(5);
         assertThat(registry.findByCategory(PluginCategory.CONDITION)).hasSize(6);
-        assertThat(registry.findByCategory(PluginCategory.ACTION)).hasSize(2);
+        assertThat(registry.findByCategory(PluginCategory.ACTION)).hasSize(9);
     }
 }

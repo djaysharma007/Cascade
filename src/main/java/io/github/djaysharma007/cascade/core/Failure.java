@@ -56,6 +56,10 @@ public sealed interface Failure {
             Objects.requireNonNull(reason, "reason must not be null");
         }
 
+        public Transient(String reason) {
+            this(reason, null);
+        }
+
         @Override
         public String message() {
             return reason;
@@ -73,6 +77,10 @@ public sealed interface Failure {
     record UnknownOutcome(String reason, Throwable cause) implements Failure {
         public UnknownOutcome {
             Objects.requireNonNull(reason, "reason must not be null");
+        }
+
+        public UnknownOutcome(String reason) {
+            this(reason, null);
         }
 
         @Override
