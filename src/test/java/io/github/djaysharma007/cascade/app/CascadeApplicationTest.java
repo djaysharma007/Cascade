@@ -150,6 +150,25 @@ class CascadeApplicationTest {
         assertThat(tplLatch.await(5, TimeUnit.SECONDS)).isTrue();
         saveSnapshot(scene, "v1_1_template_gallery.png");
 
+        // 1c. Switch to Settings View and capture
+        CountDownLatch settingsLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            shell.showSettingsView();
+            settingsLatch.countDown();
+        });
+        assertThat(settingsLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(scene, "v1_1_settings.png");
+
+        // 1d. Open Command Palette and capture
+        CountDownLatch paletteLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            shell.toggleCommandPalette();
+            paletteLatch.countDown();
+        });
+        assertThat(paletteLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(scene, "v1_1_command_palette.png");
+        Platform.runLater(shell::toggleCommandPalette);
+
         // 2. Open Editor view and capture
         CountDownLatch editorLatch = new CountDownLatch(1);
         Platform.runLater(() -> {

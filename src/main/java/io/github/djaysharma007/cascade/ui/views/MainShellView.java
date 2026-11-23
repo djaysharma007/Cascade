@@ -8,7 +8,9 @@ import io.github.djaysharma007.cascade.engine.EngineFacade;
 import io.github.djaysharma007.cascade.engine.EngineListener;
 import io.github.djaysharma007.cascade.engine.RunRecord;
 import io.github.djaysharma007.cascade.registry.PluginRegistry;
+import io.github.djaysharma007.cascade.settings.SettingsService;
 import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
+import io.github.djaysharma007.cascade.ui.components.CommandPaletteDialog;
 import io.github.djaysharma007.cascade.ui.components.ToastOverlay;
 import io.github.djaysharma007.cascade.ui.components.UiMotion;
 import javafx.animation.Timeline;
@@ -17,6 +19,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -26,6 +30,8 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
+import java.nio.file.Path;
+
 /**
  * Main application shell containing top bar, navigation sidebar, views, and toast overlay.
  */
@@ -34,11 +40,13 @@ public final class MainShellView implements EngineListener {
     private final EngineFacade facade;
     private final WorkflowRepository repository;
     private final PluginRegistry registry;
+    private final SettingsService settingsService;
 
     private final StackPane shellContainer = new StackPane();
     private final BorderPane root = new BorderPane();
     private final StackPane contentArea = new StackPane();
     private final ToastOverlay toastOverlay = new ToastOverlay();
+    private CommandPaletteDialog commandPalette;
 
     private final Label viewTitleLabel = new Label("Dashboard");
     private final Button engineToggleBtn = new Button("Start engine");
@@ -49,6 +57,7 @@ public final class MainShellView implements EngineListener {
     private final HBox navWorkflows = new HBox(8);
     private final HBox navTemplates = new HBox(8);
     private final HBox navActivity = new HBox(8);
+    private final HBox navSettings = new HBox(8);
 
     private final Label statusWorkflowCount = new Label();
     private final Label statusEngineState = new Label();
@@ -58,11 +67,17 @@ public final class MainShellView implements EngineListener {
     private TemplateGalleryView templateGalleryView;
     private ActivityView activityView;
     private WorkflowEditorView editorView;
+    private SettingsView settingsView;
 
     public MainShellView(EngineFacade facade, WorkflowRepository repository, PluginRegistry registry) {
+        this(facade, repository, registry, new SettingsService(Path.of(System.getProperty("user.home"), ".cascade", "settings.json")));
+    }
+
+    public MainShellView(EngineFacade facade, WorkflowRepository repository, PluginRegistry registry, SettingsService settingsService) {
         this.facade = facade;
         this.repository = repository;
         this.registry = registry;
+        this.settingsService = settingsService;
 
         facade.addListener(this);
         initViews();
@@ -87,6 +102,7 @@ public final class MainShellView implements EngineListener {
         );
         templateGalleryView = new TemplateGalleryView(this::openWorkflowEditorFromTemplate);
         activityView = new ActivityView(facade, this::showToast);
+        settingsView = new SettingsView(settingsService, repository, facade, this::showToast);
     }
 
     private void buildShell() {
@@ -100,6 +116,9 @@ public final class MainShellView implements EngineListener {
         VBox sidebar = createSidebar();
         root.setLeft(sidebar);
 
+        // Center content area
+        root.setCenter(contentArea);
+
         // Default to Dashboard
         showDashboardView();
 
@@ -107,7 +126,18 @@ public final class MainShellView implements EngineListener {
         HBox statusBar = createStatusBar();
         root.setBottom(statusBar);
 
-        shellContainer.getChildren().addAll(root, toastOverlay);
+        // Command palette modal overlay
+        commandPalette = new CommandPaletteDialog(() -> {});
+
+        // Shortcut Ctrl+K
+        root.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.isControlDown() && event.getCode() == KeyCode.K) {
+                toggleCommandPalette();
+                event.consume();
+            }
+        });
+
+        shellContainer.getChildren().addAll(root, toastOverlay, commandPalette);
     }
 
     private HBox createTopBar() {
@@ -132,6 +162,19 @@ public final class MainShellView implements EngineListener {
         HBox brandBox = new HBox(8, appMark, brandLabel);
         brandBox.setAlignment(Pos.CENTER_LEFT);
 
+        // Quick search button for command palette
+        Button quickSearchBtn = new Button();
+        quickSearchBtn.getStyleClass().add("button-secondary");
+        Label qsLabel = new Label("Search or commands...");
+        qsLabel.getStyleClass().add("caption-text");
+        Label kbdBadge = new Label("Ctrl+K");
+        kbdBadge.getStyleClass().add("template-category-chip");
+        HBox qsBox = new HBox(8, CascadeIcons.icon("search", 0.8, "icon-secondary"), qsLabel, kbdBadge);
+        qsBox.setAlignment(Pos.CENTER_LEFT);
+        quickSearchBtn.setGraphic(qsBox);
+        UiMotion.animateHover(quickSearchBtn);
+        quickSearchBtn.setOnAction(e -> toggleCommandPalette());
+
         viewTitleLabel.getStyleClass().add("section-title");
 
         Region spacer = new Region();
@@ -150,7 +193,7 @@ public final class MainShellView implements EngineListener {
             }
         });
 
-        topBar.getChildren().addAll(brandBox, viewTitleLabel, spacer, engineChip, engineToggleBtn);
+        topBar.getChildren().addAll(brandBox, quickSearchBtn, viewTitleLabel, spacer, engineChip, engineToggleBtn);
         return topBar;
     }
 
@@ -200,7 +243,15 @@ public final class MainShellView implements EngineListener {
         navActivity.getChildren().addAll(CascadeIcons.icon("activity", 0.9, "icon-secondary"), actLabel);
         navActivity.setOnMouseClicked(e -> showActivityView());
 
-        sidebar.getChildren().addAll(newWfBtn, sep, navDashboard, navWorkflows, navTemplates, navActivity);
+        // Nav Settings
+        navSettings.setAlignment(Pos.CENTER_LEFT);
+        navSettings.getStyleClass().addAll("nav-item");
+        Label setLabel = new Label("Settings");
+        setLabel.getStyleClass().add("body-text");
+        navSettings.getChildren().addAll(CascadeIcons.icon("settings", 0.9, "icon-secondary"), setLabel);
+        navSettings.setOnMouseClicked(e -> showSettingsView());
+
+        sidebar.getChildren().addAll(newWfBtn, sep, navDashboard, navWorkflows, navTemplates, navActivity, navSettings);
         return sidebar;
     }
 
@@ -224,6 +275,7 @@ public final class MainShellView implements EngineListener {
         navWorkflows.getStyleClass().remove("nav-item-active");
         navTemplates.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
+        navSettings.getStyleClass().remove("nav-item-active");
         dashboardView.refresh();
         contentArea.getChildren().setAll(dashboardView.getNode());
         UiMotion.pageTransition(dashboardView.getNode());
@@ -236,6 +288,7 @@ public final class MainShellView implements EngineListener {
         navDashboard.getStyleClass().remove("nav-item-active");
         navTemplates.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
+        navSettings.getStyleClass().remove("nav-item-active");
         workflowsView.refresh();
         contentArea.getChildren().setAll(workflowsView.getNode());
         UiMotion.pageTransition(workflowsView.getNode());
@@ -248,6 +301,7 @@ public final class MainShellView implements EngineListener {
         navDashboard.getStyleClass().remove("nav-item-active");
         navWorkflows.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
+        navSettings.getStyleClass().remove("nav-item-active");
         contentArea.getChildren().setAll(templateGalleryView.getNode());
         UiMotion.pageTransition(templateGalleryView.getNode());
     }
@@ -258,9 +312,21 @@ public final class MainShellView implements EngineListener {
         navDashboard.getStyleClass().remove("nav-item-active");
         navWorkflows.getStyleClass().remove("nav-item-active");
         navTemplates.getStyleClass().remove("nav-item-active");
+        navSettings.getStyleClass().remove("nav-item-active");
         activityView.refresh();
         contentArea.getChildren().setAll(activityView.getNode());
         UiMotion.pageTransition(activityView.getNode());
+    }
+
+    public void showSettingsView() {
+        viewTitleLabel.setText("Settings");
+        navSettings.getStyleClass().add("nav-item-active");
+        navDashboard.getStyleClass().remove("nav-item-active");
+        navWorkflows.getStyleClass().remove("nav-item-active");
+        navTemplates.getStyleClass().remove("nav-item-active");
+        navActivity.getStyleClass().remove("nav-item-active");
+        contentArea.getChildren().setAll(settingsView.getNode());
+        UiMotion.pageTransition(settingsView.getNode());
     }
 
     public void openNewWorkflowEditor() {
@@ -269,6 +335,7 @@ public final class MainShellView implements EngineListener {
         navWorkflows.getStyleClass().remove("nav-item-active");
         navTemplates.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
+        navSettings.getStyleClass().remove("nav-item-active");
 
         editorView = new WorkflowEditorView(
                 facade,
@@ -287,6 +354,7 @@ public final class MainShellView implements EngineListener {
         navWorkflows.getStyleClass().remove("nav-item-active");
         navTemplates.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
+        navSettings.getStyleClass().remove("nav-item-active");
 
         editorView = new WorkflowEditorView(
                 facade,
@@ -308,6 +376,7 @@ public final class MainShellView implements EngineListener {
         navWorkflows.getStyleClass().remove("nav-item-active");
         navTemplates.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
+        navSettings.getStyleClass().remove("nav-item-active");
 
         editorView = new WorkflowEditorView(
                 facade,
@@ -318,6 +387,25 @@ public final class MainShellView implements EngineListener {
         );
         contentArea.getChildren().setAll(editorView.getNode());
         UiMotion.pageTransition(editorView.getNode());
+    }
+
+    public void toggleCommandPalette() {
+        if (commandPalette.isOpen()) {
+            commandPalette.close();
+        } else {
+            commandPalette.open(
+                    facade,
+                    this::showDashboardView,
+                    this::showWorkflowsView,
+                    this::showTemplateGalleryView,
+                    this::showActivityView,
+                    this::showSettingsView,
+                    this::openNewWorkflowEditor,
+                    this::openEditWorkflowEditor,
+                    this::openWorkflowEditorFromTemplate,
+                    templateGalleryView::getTemplates
+            );
+        }
     }
 
     private void updateEngineStatus(boolean running) {
@@ -391,7 +479,16 @@ public final class MainShellView implements EngineListener {
         return activityView;
     }
 
+    public SettingsView getSettingsView() {
+        return settingsView;
+    }
+
+    public CommandPaletteDialog getCommandPalette() {
+        return commandPalette;
+    }
+
     public ToastOverlay getToastOverlay() {
         return toastOverlay;
     }
 }
+

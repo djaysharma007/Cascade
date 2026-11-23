@@ -60,6 +60,10 @@ public final class EngineFacade {
         return engine.allWorkflows();
     }
 
+    public Optional<Workflow> findWorkflow(WorkflowId id) {
+        return engine.findWorkflow(id);
+    }
+
     public Optional<Workflow> getWorkflow(WorkflowId id) {
         return engine.getWorkflow(id);
     }

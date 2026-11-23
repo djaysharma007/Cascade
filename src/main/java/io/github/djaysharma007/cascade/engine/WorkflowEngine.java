@@ -319,6 +319,10 @@ public final class WorkflowEngine {
         return List.copyOf(workflows.values());
     }
 
+    public Optional<Workflow> findWorkflow(WorkflowId id) {
+        return Optional.ofNullable(workflows.get(id));
+    }
+
     public void addListener(EngineListener listener) {
         listeners.add(Objects.requireNonNull(listener));
     }
