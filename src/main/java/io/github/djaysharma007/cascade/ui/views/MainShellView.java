@@ -47,6 +47,7 @@ public final class MainShellView implements EngineListener {
 
     private final HBox navDashboard = new HBox(8);
     private final HBox navWorkflows = new HBox(8);
+    private final HBox navTemplates = new HBox(8);
     private final HBox navActivity = new HBox(8);
 
     private final Label statusWorkflowCount = new Label();
@@ -54,6 +55,7 @@ public final class MainShellView implements EngineListener {
 
     private DashboardView dashboardView;
     private WorkflowsView workflowsView;
+    private TemplateGalleryView templateGalleryView;
     private ActivityView activityView;
     private WorkflowEditorView editorView;
 
@@ -83,6 +85,7 @@ public final class MainShellView implements EngineListener {
                 this::openNewWorkflowEditor,
                 this::openEditWorkflowEditor
         );
+        templateGalleryView = new TemplateGalleryView(this::openWorkflowEditorFromTemplate);
         activityView = new ActivityView(facade);
     }
 
@@ -181,6 +184,14 @@ public final class MainShellView implements EngineListener {
         navWorkflows.getChildren().addAll(CascadeIcons.icon("workflows", 0.9, "icon-secondary"), wfLabel);
         navWorkflows.setOnMouseClicked(e -> showWorkflowsView());
 
+        // Nav Templates
+        navTemplates.setAlignment(Pos.CENTER_LEFT);
+        navTemplates.getStyleClass().addAll("nav-item");
+        Label tplLabel = new Label("Templates");
+        tplLabel.getStyleClass().add("body-text");
+        navTemplates.getChildren().addAll(CascadeIcons.icon("templates", 0.9, "icon-secondary"), tplLabel);
+        navTemplates.setOnMouseClicked(e -> showTemplateGalleryView());
+
         // Nav Activity
         navActivity.setAlignment(Pos.CENTER_LEFT);
         navActivity.getStyleClass().addAll("nav-item");
@@ -189,7 +200,7 @@ public final class MainShellView implements EngineListener {
         navActivity.getChildren().addAll(CascadeIcons.icon("activity", 0.9, "icon-secondary"), actLabel);
         navActivity.setOnMouseClicked(e -> showActivityView());
 
-        sidebar.getChildren().addAll(newWfBtn, sep, navDashboard, navWorkflows, navActivity);
+        sidebar.getChildren().addAll(newWfBtn, sep, navDashboard, navWorkflows, navTemplates, navActivity);
         return sidebar;
     }
 
@@ -211,6 +222,7 @@ public final class MainShellView implements EngineListener {
             navDashboard.getStyleClass().add("nav-item-active");
         }
         navWorkflows.getStyleClass().remove("nav-item-active");
+        navTemplates.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
         dashboardView.refresh();
         contentArea.getChildren().setAll(dashboardView.getNode());
@@ -222,6 +234,7 @@ public final class MainShellView implements EngineListener {
         viewTitleLabel.setText("Workflows");
         navWorkflows.getStyleClass().add("nav-item-active");
         navDashboard.getStyleClass().remove("nav-item-active");
+        navTemplates.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
         workflowsView.refresh();
         contentArea.getChildren().setAll(workflowsView.getNode());
@@ -229,11 +242,22 @@ public final class MainShellView implements EngineListener {
         updateStatusCounts();
     }
 
+    public void showTemplateGalleryView() {
+        viewTitleLabel.setText("Templates");
+        navTemplates.getStyleClass().add("nav-item-active");
+        navDashboard.getStyleClass().remove("nav-item-active");
+        navWorkflows.getStyleClass().remove("nav-item-active");
+        navActivity.getStyleClass().remove("nav-item-active");
+        contentArea.getChildren().setAll(templateGalleryView.getNode());
+        UiMotion.pageTransition(templateGalleryView.getNode());
+    }
+
     public void showActivityView() {
         viewTitleLabel.setText("Activity");
         navActivity.getStyleClass().add("nav-item-active");
         navDashboard.getStyleClass().remove("nav-item-active");
         navWorkflows.getStyleClass().remove("nav-item-active");
+        navTemplates.getStyleClass().remove("nav-item-active");
         activityView.refresh();
         contentArea.getChildren().setAll(activityView.getNode());
         UiMotion.pageTransition(activityView.getNode());
@@ -243,6 +267,7 @@ public final class MainShellView implements EngineListener {
         viewTitleLabel.setText("New workflow");
         navDashboard.getStyleClass().remove("nav-item-active");
         navWorkflows.getStyleClass().remove("nav-item-active");
+        navTemplates.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
 
         editorView = new WorkflowEditorView(
@@ -256,10 +281,32 @@ public final class MainShellView implements EngineListener {
         UiMotion.pageTransition(editorView.getNode());
     }
 
+    public void openWorkflowEditorFromTemplate(Workflow draftWorkflow) {
+        viewTitleLabel.setText("New workflow from template");
+        navDashboard.getStyleClass().remove("nav-item-active");
+        navWorkflows.getStyleClass().remove("nav-item-active");
+        navTemplates.getStyleClass().remove("nav-item-active");
+        navActivity.getStyleClass().remove("nav-item-active");
+
+        editorView = new WorkflowEditorView(
+                facade,
+                repository,
+                registry,
+                draftWorkflow,
+                () -> {
+                    showWorkflowsView();
+                    toastOverlay.showToast("Workflow created from template", ToastOverlay.Type.SUCCESS);
+                }
+        );
+        contentArea.getChildren().setAll(editorView.getNode());
+        UiMotion.pageTransition(editorView.getNode());
+    }
+
     public void openEditWorkflowEditor(Workflow workflow) {
         viewTitleLabel.setText("Edit workflow");
         navDashboard.getStyleClass().remove("nav-item-active");
         navWorkflows.getStyleClass().remove("nav-item-active");
+        navTemplates.getStyleClass().remove("nav-item-active");
         navActivity.getStyleClass().remove("nav-item-active");
 
         editorView = new WorkflowEditorView(
@@ -334,6 +381,10 @@ public final class MainShellView implements EngineListener {
 
     public WorkflowsView getWorkflowsView() {
         return workflowsView;
+    }
+
+    public TemplateGalleryView getTemplateGalleryView() {
+        return templateGalleryView;
     }
 
     public ActivityView getActivityView() {
