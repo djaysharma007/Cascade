@@ -31,17 +31,18 @@ These rules apply to every task. In phase 0 the agent copies this section and se
 - Javadoc is mandatory on every contract interface and on every public type in `core`, and states pre- and postconditions.
 - Every behaviour change ships with a test in the same commit.
 
-### Interface quality (v1.1 upgrade specification)
+### Interface quality (v1.2 visual refresh specification)
 
-- Use only the tokens in section 10 and 18. No raw hex outside CSS, no default JavaFX (Modena) styling visible, no default focus ring, no stock blue.
+- Use only the tokens in section 10: `ink` (#102730), `petrol` (#17495A), `copper` (#B77457), `sand` (#D9BC9A), `cream` (#EEE7DB), `paper` (#F4EFE8). No raw hex outside CSS, no default JavaFX (Modena) styling visible, no default focus ring.
 - Spacing comes from the 4 px scale only. Align everything to the grid; equal gaps for equal relationships. Misaligned edges are defects.
-- Visual depth: soft shadows on cards, dialogs and popups; faint accent glow only on live or active elements; subtle gradient allowed on primary buttons and page headers. No neon, no glassmorphism, no emoji.
-- One icon set, one weight, using crisp vector shapes. No emoji anywhere: UI, logs, comments, commit messages, README.
+- Visual depth: 1 px sand border plus one very soft warm shadow on cards and dialogs (`dropshadow gaussian, ink at 8% opacity, radius 24, offset y 8`). Nothing else casts a shadow. No neon, no gradients, no glows.
+- No decorative icons anywhere: remove icons in dashboard stat cards, sidebar items, status chips, and button icons. Navigation and chips are text only. Keep only functional glyphs (dropdown chevrons, checkbox ticks, drag handles, tray icon). Strictly no emoji anywhere.
 - Show friendly display names everywhere ("File created", "Move file") and never raw ids like file-created.
-- Smooth animation using the JavaFX transition and Timeline API, 120 to 250 ms with ease-out: page transitions (fade plus a short slide), hover and press feedback on every button, a toggle switch whose thumb slides, list rows that fade in with a short stagger, toasts that slide in, smooth expand and collapse, a pulsing live-run indicator, and animated counters on the dashboard. Add a "Reduce motion" setting that turns animation off.
+- Typography: IBM Plex family (IBM Plex Sans for interface, IBM Plex Serif for page titles and large dashboard numbers, IBM Plex Mono for paths, logs and JSON). Hierarchy: page title Plex Serif 28 semibold; large numbers Plex Serif 36; section title Plex Sans 16 semibold; body 14; secondary 13; caption 12.
+- Shape: 8 px radius for buttons, inputs, chips; 12 px for cards; 16 px for dialogs. Toggle switch track (40x22 px) is the only fully rounded element. Thumb (18 px) travels the full track consistently.
+- Smooth animation using the JavaFX transition and Timeline API, 120 to 220 ms with ease-out: page transitions (fade plus a short slide), hover feedback, toggle switch sliding thumb, toasts. Keep "Reduce motion" working.
 - Every list, table and form has designed empty, loading, error and populated states.
-- Controls look and behave consistently: same height, radius, hover, pressed, focus and disabled states everywhere. Build each component once in `ui/components` and reuse it.
-- Every interactive element is keyboard reachable with a visible focus state and a meaningful accessible name.
+- Calm, specific copy in sentence case with no filler words. Keyboard reachable with visible copper focus state.
 
 
 ### Copy

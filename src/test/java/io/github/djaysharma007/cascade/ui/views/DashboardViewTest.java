@@ -37,7 +37,7 @@ class DashboardViewTest {
     }
 
     @Test
-    void testDashboardInitializationAndRefresh(@TempDir Path tempDir) {
+    void testDashboardZeroStateAndPopulatedState(@TempDir Path tempDir) {
         PluginRegistry registry = new PluginRegistry();
         BuiltinPlugins.registerAll(registry);
         WorkflowRepository repo = new JsonWorkflowRepository(tempDir);
@@ -48,7 +48,7 @@ class DashboardViewTest {
                 .name("Auto Print")
                 .enabled(true)
                 .trigger(PluginSpec.of("manual", Map.of()))
-                .addAction(PluginSpec.of("print-message", Map.of("text", "Hello Dashboard")))
+                .addAction(PluginSpec.of("print-message", Map.of("text", "Hello Overview")))
                 .build();
         repo.save(wf);
         facade.registerWorkflow(wf);
@@ -67,10 +67,21 @@ class DashboardViewTest {
 
         assertThat(dashboard.getNode()).isNotNull();
 
-        // Execute a run
+        // 1. Verify Zero State: 0 runs
+        assertThat(dashboard.getRunsTodayVal().getText()).isEqualTo("0");
+        assertThat(dashboard.getSuccessRateVal().getText()).isEqualTo("—");
+        assertThat(dashboard.getSuccessRateContext().getText()).isEqualTo("No runs yet");
+        assertThat(dashboard.getFailuresVal().getText()).isEqualTo("0");
+        assertThat(dashboard.getFailuresContext().getText()).isEqualTo("No failures");
+        assertThat(dashboard.getActiveWorkflowsVal().getText()).isEqualTo("1");
+
+        // 2. Execute a run and refresh
         facade.executeWorkflowManually(wf.id(), Event.empty());
         dashboard.refresh();
 
         assertThat(facade.getRuns()).hasSize(1);
+        assertThat(dashboard.getSuccessRateVal().getText()).isEqualTo("100%");
+        assertThat(dashboard.getFailuresVal().getText()).isEqualTo("0");
+        assertThat(dashboard.getFailuresContext().getText()).isEqualTo("No failures");
     }
 }

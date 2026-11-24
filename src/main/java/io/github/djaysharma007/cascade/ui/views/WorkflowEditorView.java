@@ -11,7 +11,6 @@ import io.github.djaysharma007.cascade.engine.EngineFacade;
 import io.github.djaysharma007.cascade.engine.RunRecord;
 import io.github.djaysharma007.cascade.registry.PluginDescriptor;
 import io.github.djaysharma007.cascade.registry.PluginRegistry;
-import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
 import io.github.djaysharma007.cascade.ui.components.DynamicFormBuilder;
 import io.github.djaysharma007.cascade.ui.components.PluginDisplayNameResolver;
 import io.github.djaysharma007.cascade.ui.components.ToggleSwitch;
@@ -33,7 +32,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 
 import java.util.ArrayList;
@@ -218,8 +216,6 @@ public final class WorkflowEditorView {
         Label badge = new Label("TRIGGER");
         badge.getStyleClass().addAll("step-badge", "step-badge-trigger");
 
-        var icon = CascadeIcons.icon("folder", 0.9, "icon-teal");
-
         triggerSelector = new ComboBox<>();
         triggerSelector.getStyleClass().add("combo-box");
         configureComboBoxFriendlyNames(triggerSelector);
@@ -228,7 +224,7 @@ public final class WorkflowEditorView {
         }
         triggerSelector.setOnAction(e -> onTriggerChanged());
 
-        head.getChildren().addAll(badge, icon, triggerSelector);
+        head.getChildren().addAll(badge, triggerSelector);
 
         triggerCard.getChildren().addAll(head, triggerFormContainer);
     }
@@ -266,7 +262,6 @@ public final class WorkflowEditorView {
         HBox.setHgrow(sp, Priority.ALWAYS);
 
         Button addCondBtn = new Button("Add condition");
-        addCondBtn.setGraphic(CascadeIcons.icon("plus", 0.8, "icon-secondary"));
         addCondBtn.getStyleClass().add("button-secondary");
         UiMotion.animateHover(addCondBtn);
         addCondBtn.setOnAction(e -> addConditionEntry(null, null));
@@ -278,7 +273,6 @@ public final class WorkflowEditorView {
 
     private void buildActionsFlow() {
         Button addActBtn = new Button("Add action");
-        addActBtn.setGraphic(CascadeIcons.icon("plus", 0.85, "icon-primary"));
         addActBtn.getStyleClass().add("button-secondary");
         UiMotion.animateHover(addActBtn);
         addActBtn.setOnAction(e -> addActionEntry("print-message", Map.of("text", "Processed file")));
@@ -291,17 +285,14 @@ public final class WorkflowEditorView {
     }
 
     private Node createConnector() {
-        VBox box = new VBox(2);
+        VBox box = new VBox();
         box.setAlignment(Pos.CENTER);
         box.setPadding(new Insets(2, 0, 2, 0));
 
-        Rectangle line = new Rectangle(2, 18);
+        Rectangle line = new Rectangle(1.5, 20);
         line.getStyleClass().add("flow-connector-line");
 
-        Circle dot = new Circle(3);
-        dot.getStyleClass().add("flow-connector-dot");
-
-        box.getChildren().addAll(line, dot);
+        box.getChildren().add(line);
         return box;
     }
 
@@ -316,13 +307,11 @@ public final class WorkflowEditorView {
         cancelBtn.setOnAction(e -> onComplete.run());
 
         Button testRunBtn = new Button("Test run");
-        testRunBtn.setGraphic(CascadeIcons.icon("play", 0.8, "icon-secondary"));
         testRunBtn.getStyleClass().add("button-secondary");
         UiMotion.animateHover(testRunBtn);
         testRunBtn.setOnAction(e -> runTestExecution());
 
         Button saveBtn = new Button("Save");
-        saveBtn.setGraphic(CascadeIcons.icon("check", 0.85, "icon-primary"));
         saveBtn.getStyleClass().add("button-primary");
         UiMotion.animateHover(saveBtn);
         saveBtn.setOnAction(e -> saveWorkflow());
@@ -385,8 +374,7 @@ public final class WorkflowEditorView {
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        Button removeBtn = new Button();
-        removeBtn.setGraphic(CascadeIcons.icon("trash", 0.75, "icon-error"));
+        Button removeBtn = new Button("Delete");
         removeBtn.getStyleClass().add("button-danger");
         UiMotion.animateHover(removeBtn);
 
@@ -458,8 +446,7 @@ public final class WorkflowEditorView {
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        Button removeBtn = new Button();
-        removeBtn.setGraphic(CascadeIcons.icon("trash", 0.75, "icon-error"));
+        Button removeBtn = new Button("Delete");
         removeBtn.getStyleClass().add("button-danger");
         UiMotion.animateHover(removeBtn);
 

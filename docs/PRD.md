@@ -301,96 +301,77 @@ Workflows are stored as one JSON file each, behind a `WorkflowRepository` interf
 
 ## 10. Design system
 
-Cascade uses a single dark theme built from the teal palette (Ink Black, Dark Teal, Tropical Teal, Electric Aqua, Sky Blue). The family fits the name, stays cohesive because every colour is a neighbour of the others, and gives high contrast for a tool people leave open. All colours live as named tokens in one `cascade.css`; no hex value appears anywhere else.
+Cascade uses a calm, premium, hand-designed visual system with a dark ink sidebar and top bar, a warm cream canvas, and paper cards. All colours live as named tokens in `cascade.css`; no raw hex value appears in components or code.
 
 ### Colour tokens
 
-| Token | Hex | Source | Use |
-| --- | --- | --- | --- |
-| `bg-base` | `#001011` | Ink Black | Window background |
-| `bg-surface` | `#061E21` | Derived | Sidebar, panels |
-| `bg-raised` | `#093A3E` | Dark Teal | Cards, inputs, hovered rows |
-| `border` | `#124B50` | Derived | 1 px dividers and outlines |
-| `accent` | `#3AAFB9` | Tropical Teal | Primary buttons, selection, links |
-| `accent-bright` | `#64E9EE` | Electric Aqua | Focus ring, live indicator, active toggle; at most 5% of any screen |
-| `text-primary` | `#E6F2F4` | Derived | Main text |
-| `text-secondary` | `#97C8EB` | Sky Blue | Labels, secondary text, info |
-| `text-muted` | `#86B0B7` | Derived | Placeholders, disabled text |
-| `success` | `#5BD68A` | Semantic | Succeeded only |
-| `warning` | `#F2B84B` | Semantic | Unknown outcome, retries, warnings |
-| `error` | `#F2677A` | Semantic | Failed, destructive actions |
+| Token | Hex | Role / Use |
+| --- | --- | --- |
+| `ink` | `#102730` | Sidebar, top bar, primary text |
+| `petrol` | `#17495A` | Primary buttons, selected states, links |
+| `copper` | `#B77457` | Single accent: active nav indicator, focus ring, chart bars. Never for small text on light backgrounds |
+| `sand` | `#D9BC9A` | Borders, dividers, subtle fills, toggle off track |
+| `cream` | `#EEE7DB` | App canvas (workspace background) |
+| `paper` | `#F4EFE8` | Cards, inputs, dialogs, button text |
+| `success` | `#2E7D5B` | Succeeded status text and tint |
+| `warning` | `#9A6A12` | Warning, retries status text and tint |
+| `error` | `#A63D33` | Failed, destructive actions text and tint |
 
-Semantic colours are used only for status and never as decoration. Status is never shown by colour alone: every status chip carries an icon and a text label. A unit test computes the contrast ratio of every text and background token pair used in the app and fails below 4.5:1.
+Status chips use a lightly tinted background with deep-toned text. All text pairs pass WCAG AA contrast (>= 4.5:1).
 
 ### Typography
 
+The IBM Plex family (SIL Open Font License) is bundled in `src/main/resources/fonts/` and loaded at startup:
+- **IBM Plex Sans**: Interface, labels, table rows, buttons.
+- **IBM Plex Serif**: Page titles ("Overview") and large dashboard metrics.
+- **IBM Plex Mono**: Paths, logs, JSON, and code snippets.
+
 | Role | Font | Size and weight |
 | --- | --- | --- |
-| Page title | Inter | 20 px, 600 |
-| Section title | Inter | 16 px, 600 |
-| Body | Inter | 14 px, 400 |
-| Table, secondary | Inter | 13 px, 400 |
-| Caption | Inter | 12 px, 500 |
-| Paths, log, JSON | JetBrains Mono | 13 px, 400 |
+| Page title | IBM Plex Serif | 28 px, Semibold (600) |
+| Large metric | IBM Plex Serif | 36 px, Regular/Semibold |
+| Section title | IBM Plex Sans | 16 px, Semibold (600) |
+| Body | IBM Plex Sans | 14 px, Regular (400) |
+| Secondary | IBM Plex Sans | 13 px, Regular (400) |
+| Caption | IBM Plex Sans | 12 px, Regular (400) |
+| Monospace | IBM Plex Mono | 12 px / 13 px, Regular (400) |
 
-Both fonts (SIL Open Font License) are bundled in resources and loaded at startup, so the look is identical on every machine.
+### Layout, shape and depth
 
-### Layout, shape and motion
-
-- 4 px base grid. Spacing scale: 4, 8, 12, 16, 24, 32, 48. No other values.
-- Radius: 6 px for controls, 10 px for cards, 14 px for dialogs. Borders 1 px. Separation comes from surface colour and borders, not shadows; only dialogs and toasts have one soft shadow.
-- Control height 32 px, primary button 36 px, list row 44 px, sidebar 264 px wide.
-- Motion: 120 ms for hover and press, 180 ms for panels and dialogs, ease-out, fade and short translate only. No bounce, no spinning decorations. The only looping animation is a slow pulse on the live-run indicator.
-- One outline icon set (Lucide, ISC licence) at 16 and 20 px with a 1.5 px stroke, bundled as SVG paths. Emoji and Unicode symbols are never used as icons.
-- App mark: three descending rounded bars in `accent-bright` on `bg-base`, drawn by hand as SVG, with the wordmark Cascade in Inter 600.
-
-### Components
-
-| Component | Specification |
-| --- | --- |
-| Primary button | `accent` fill, `bg-base` text, 36 px; hover lightens, pressed darkens, 2 px `accent-bright` focus ring |
-| Secondary and ghost buttons | Transparent with `border` outline or no outline; `text-primary` label |
-| Danger button | `error` text and outline; filled only inside the delete confirmation |
-| Text input, select, number field | `bg-raised` fill, `border` outline, `accent-bright` outline on focus, inline error text in `error` below the field |
-| Toggle switch | 36 by 20 px track; `accent-bright` when on; custom-drawn |
-| Segmented control | Used for Match all or any; selected segment uses `accent` |
-| Status chip | Dot or icon plus text; Enabled, Disabled, Faulted, Succeeded, Skipped, Failed, Unknown |
-| Table | 12 px header in `text-secondary`, no zebra stripes, hover row in `bg-raised` |
-| Toast | Bottom right, 4 s, at most 3 stacked, never blocks input |
-| Dialog | 480 px wide, 60% black scrim, one primary action, Escape closes |
+- 4 px base grid. Generous whitespace and consistent alignment.
+- Shape: 8 px radius for buttons, inputs, chips; 12 px for cards; 16 px for dialogs. Only the toggle switch track is fully rounded.
+- Visual depth: 1 px sand border (`#D9BC9A`) plus one very soft warm shadow on cards and dialogs (`dropshadow(gaussian, rgba(16, 39, 48, 0.08), 24, 0.0, 0, 8)`). No neon, no gradients, no glows.
+- No decorative icons: navigation and status chips are text only. Only functional glyphs remain (dropdown chevrons, checkbox ticks, drag handles, tray icon).
+- Copy: Sentence case, calm and specific, no filler text.
 
 ## 11. Screens and interaction
 
-The window opens at 1280 by 800 and cannot shrink below 1024 by 680. Layout is FXML, styling is CSS only, state lives in view-models, and controllers contain no logic (MVVM). View-models reach the engine through one `EngineFacade`.
+The window opens at 1280 by 800 and cannot shrink below 1024 by 680. Layout is card-based over a cream canvas with an ink top bar and sidebar.
 
 ### Application shell
 
-- **Top bar:** app mark, current view title, and the engine control: a single button that reads Start engine or Stop engine, with a status chip beside it (Stopped, Running, Stopping).
-- **Sidebar:** New workflow button, then navigation for Workflows, Activity and Settings.
-- **Status bar:** enabled workflow count, runs in flight, and any back-pressure warning.
+- **Top bar:** Dark ink background (`#102730`), Cascade wordmark in IBM Plex Serif, view title, search input (8 px radius), and engine state with rectangular Start/Stop button.
+- **Sidebar:** Dark ink background; Cascade wordmark at top; text-only navigation rows (40 px tall) with a 3 px copper bar on the left for the active row; engine status and rectangular Start/Stop button at bottom.
+
+### Dashboard ("Overview")
+
+- Serif page title "Overview" with a concise subtitle.
+- Four stat cards with no icons: small label, large serif number (36 px), short context line.
+  - Failures card: shows "No failures" in neutral style when 0; only shows "N need attention" with error style when > 0.
+  - Success rate card: shows "—" and "No runs yet" when 0 runs, never 100%.
+- Two-column bottom section: Chart card (~2/3 width) with copper bars and sand grid lines; Recent activity card (~1/3 width).
 
 ### Workflows
 
-- A list of rows, 44 px tall: name, trigger summary, state chip, last result with relative time, an enable toggle and an overflow menu (Edit, Duplicate, Delete).
-- A Needs attention section appears above the list only when a file failed to load, with the reason and the file name.
-- Empty state: one sentence saying what a workflow is and a New workflow button. No illustration.
+- Clean rows on paper cards: workflow name, one-line human summary ("When a file is created in D:\..."), state toggle switch, "Edit" button, and "More" dropdown menu (Run test, Duplicate, Export, Delete).
+- Toggle switch: 40x22 px track (sand when off, petrol when on), 18 px paper thumb that travels the full track consistently.
 
-### Workflow editor
+### Workflow editor, Activity, Templates, Settings
 
-- Three stacked sections in this order: Trigger (one card), Conditions (list with a Match all or any control and an Add condition button), Actions (ordered list with drag reordering and an Add action button).
-- Choosing a plugin opens its generated form inside the card. Controls follow the parameter type: text, number, yes/no switch, choice, folder picker with a Browse button.
-- Validation runs on field blur and on Save. Errors are written under the field in plain language: what is wrong and what to enter instead.
-- A sticky footer holds Save, Discard changes and Test run. Unsaved changes are indicated in the footer, and leaving with unsaved changes asks for confirmation.
-
-### Activity
-
-- A table of runs: time, workflow, trigger summary, result chip, duration. New runs appear at the top live.
-- Selecting a run opens a side panel with a step timeline: each step's result, number of attempts, duration and failure reason, with Not run steps greyed.
-- Filters for workflow and result. Empty state names what will appear here and when.
-
-### Settings
-
-- Concurrency cap, default action timeout, retry attempts and base delay, with defaults shown and a Reset to defaults action.
+- **Editor**: Step cards connected by a thin 1.5 px sand line without dots or glows; embedded parameter forms.
+- **Activity**: Table without grid lines; thin sand dividers; detail panel with clean step timeline.
+- **Templates**: Plain text tabs with a copper underline for the active tab (no pill shapes); cards with 1 px sand border.
+- **Settings**: Structured card sections for Tray/Startup, Reduce motion, Execution limits, and Portability.
 
 ### States every screen must define
 

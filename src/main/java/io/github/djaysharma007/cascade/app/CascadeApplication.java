@@ -155,16 +155,28 @@ public class CascadeApplication extends Application {
 
     private void loadBundledFonts() {
         String[] fontPaths = {
-                "/fonts/Inter-Regular.ttf",
-                "/fonts/Inter-Medium.ttf",
-                "/fonts/Inter-SemiBold.ttf",
-                "/fonts/JetBrainsMono-Regular.ttf"
+                "/fonts/IBMPlexSans-Regular.ttf",
+                "/fonts/IBMPlexSans-Medium.ttf",
+                "/fonts/IBMPlexSans-SemiBold.ttf",
+                "/fonts/IBMPlexSans-Bold.ttf",
+                "/fonts/IBMPlexSerif-Regular.ttf",
+                "/fonts/IBMPlexSerif-SemiBold.ttf",
+                "/fonts/IBMPlexSerif-Bold.ttf",
+                "/fonts/IBMPlexMono-Regular.ttf",
+                "/fonts/IBMPlexMono-Medium.ttf",
+                "/fonts/IBMPlexMono-SemiBold.ttf"
         };
         for (String path : fontPaths) {
             try (InputStream is = getClass().getResourceAsStream(path)) {
                 if (is != null) {
-                    Font.loadFont(is, 14);
-                    log.debug("Loaded font: {}", path);
+                    Font font = Font.loadFont(is, 14);
+                    if (font != null) {
+                        log.info("Loaded font: {} -> family='{}', name='{}'", path, font.getFamily(), font.getName());
+                    } else {
+                        log.warn("Failed to load font from {}", path);
+                    }
+                } else {
+                    log.warn("Font resource not found: {}", path);
                 }
             } catch (Exception e) {
                 log.warn("Could not load font from {}", path, e);

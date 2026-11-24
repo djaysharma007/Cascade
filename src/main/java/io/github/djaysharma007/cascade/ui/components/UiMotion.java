@@ -13,6 +13,7 @@ import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBase;
 import javafx.scene.control.Label;
 import javafx.util.Duration;
 
@@ -67,7 +68,7 @@ public final class UiMotion {
         transition.play();
     }
 
-    public static void animateHover(Button button) {
+    public static void animateHover(ButtonBase button) {
         if (button == null) {
             return;
         }
