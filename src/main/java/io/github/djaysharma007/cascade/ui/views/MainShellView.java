@@ -48,10 +48,11 @@ public final class MainShellView implements EngineListener {
     private final ToastOverlay toastOverlay = new ToastOverlay();
     private CommandPaletteDialog commandPalette;
 
-    private final Label viewTitleLabel = new Label("Dashboard");
-    private final Button engineToggleBtn = new Button("Start engine");
+    private final Label viewTitleLabel = new Label("Overview");
+    private final Button engineToggleBtn = new Button("Start");
     private final Label engineChip = new Label("Stopped");
-    private Timeline pulseTimeline;
+    private final Label sidebarEngineStateLabel = new Label("Engine stopped");
+    private final Button sidebarEngineToggleBtn = new Button("Start");
 
     private final HBox navDashboard = new HBox(8);
     private final HBox navWorkflows = new HBox(8);
@@ -119,7 +120,7 @@ public final class MainShellView implements EngineListener {
         // Center content area
         root.setCenter(contentArea);
 
-        // Default to Dashboard
+        // Default to Overview / Dashboard
         showDashboardView();
 
         // Status bar
@@ -145,55 +146,30 @@ public final class MainShellView implements EngineListener {
         topBar.getStyleClass().add("top-bar");
         topBar.setAlignment(Pos.CENTER_LEFT);
 
-        // App Mark: 3 descending rounded bars in accent-bright
-        HBox appMark = new HBox(3);
-        appMark.setAlignment(Pos.CENTER);
-        for (int h : new int[]{18, 14, 10}) {
-            Rectangle bar = new Rectangle(3, h);
-            bar.setArcWidth(2);
-            bar.setArcHeight(2);
-            bar.setFill(Color.web("#64E9EE"));
-            appMark.getChildren().add(bar);
-        }
-
         Label brandLabel = new Label("Cascade");
-        brandLabel.getStyleClass().add("section-title");
+        brandLabel.getStyleClass().add("brand-title");
 
-        HBox brandBox = new HBox(8, appMark, brandLabel);
-        brandBox.setAlignment(Pos.CENTER_LEFT);
+        // Search input field with rounded-rectangle (8 px radius) style
+        Button searchInput = new Button("Search or commands...  Ctrl+K");
+        searchInput.getStyleClass().add("text-input");
+        searchInput.setPrefWidth(260);
+        searchInput.setAlignment(Pos.CENTER_LEFT);
+        UiMotion.animateHover(searchInput);
+        searchInput.setOnAction(e -> toggleCommandPalette());
 
-        // Quick search button for command palette
-        Button quickSearchBtn = new Button();
-        quickSearchBtn.getStyleClass().add("button-secondary");
-        Label qsLabel = new Label("Search or commands...");
-        qsLabel.getStyleClass().add("caption-text");
-        Label kbdBadge = new Label("Ctrl+K");
-        kbdBadge.getStyleClass().add("template-category-chip");
-        HBox qsBox = new HBox(8, CascadeIcons.icon("search", 0.8, "icon-secondary"), qsLabel, kbdBadge);
-        qsBox.setAlignment(Pos.CENTER_LEFT);
-        quickSearchBtn.setGraphic(qsBox);
-        UiMotion.animateHover(quickSearchBtn);
-        quickSearchBtn.setOnAction(e -> toggleCommandPalette());
-
-        viewTitleLabel.getStyleClass().add("section-title");
+        viewTitleLabel.getStyleClass().add("brand-title");
+        viewTitleLabel.setStyle("-fx-text-fill: -color-text-on-dark-secondary; -fx-font-size: 16px;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         engineChip.getStyleClass().addAll("chip", "chip-stopped");
 
-        engineToggleBtn.setGraphic(CascadeIcons.icon("play", 0.85, "icon-primary"));
         engineToggleBtn.getStyleClass().add("button-primary");
         UiMotion.animateHover(engineToggleBtn);
-        engineToggleBtn.setOnAction(e -> {
-            if (facade.isRunning()) {
-                facade.stop();
-            } else {
-                facade.start();
-            }
-        });
+        engineToggleBtn.setOnAction(e -> toggleEngine());
 
-        topBar.getChildren().addAll(brandBox, quickSearchBtn, viewTitleLabel, spacer, engineChip, engineToggleBtn);
+        topBar.getChildren().addAll(brandLabel, searchInput, viewTitleLabel, spacer, engineChip, engineToggleBtn);
         return topBar;
     }
 
@@ -201,22 +177,25 @@ public final class MainShellView implements EngineListener {
         VBox sidebar = new VBox(8);
         sidebar.getStyleClass().add("sidebar");
 
+        Label brandWordmark = new Label("Cascade");
+        brandWordmark.getStyleClass().add("brand-title");
+        brandWordmark.setPadding(new Insets(0, 0, 8, 8));
+
         Button newWfBtn = new Button("New workflow");
-        newWfBtn.setGraphic(CascadeIcons.icon("plus", 0.9, "icon-primary"));
         newWfBtn.getStyleClass().add("button-primary");
         newWfBtn.setMaxWidth(Double.MAX_VALUE);
         UiMotion.animateHover(newWfBtn);
         newWfBtn.setOnAction(e -> openNewWorkflowEditor());
 
         Region sep = new Region();
-        sep.setMinHeight(16);
+        sep.setMinHeight(12);
 
-        // Nav Dashboard
+        // Nav Overview (formerly Dashboard)
         navDashboard.setAlignment(Pos.CENTER_LEFT);
         navDashboard.getStyleClass().addAll("nav-item", "nav-item-active");
-        Label dashLabel = new Label("Dashboard");
+        Label dashLabel = new Label("Overview");
         dashLabel.getStyleClass().add("body-text");
-        navDashboard.getChildren().addAll(CascadeIcons.icon("dashboard", 0.9, "icon-secondary"), dashLabel);
+        navDashboard.getChildren().setAll(dashLabel);
         navDashboard.setOnMouseClicked(e -> showDashboardView());
 
         // Nav Workflows
@@ -224,7 +203,7 @@ public final class MainShellView implements EngineListener {
         navWorkflows.getStyleClass().addAll("nav-item");
         Label wfLabel = new Label("Workflows");
         wfLabel.getStyleClass().add("body-text");
-        navWorkflows.getChildren().addAll(CascadeIcons.icon("workflows", 0.9, "icon-secondary"), wfLabel);
+        navWorkflows.getChildren().setAll(wfLabel);
         navWorkflows.setOnMouseClicked(e -> showWorkflowsView());
 
         // Nav Templates
@@ -232,7 +211,7 @@ public final class MainShellView implements EngineListener {
         navTemplates.getStyleClass().addAll("nav-item");
         Label tplLabel = new Label("Templates");
         tplLabel.getStyleClass().add("body-text");
-        navTemplates.getChildren().addAll(CascadeIcons.icon("templates", 0.9, "icon-secondary"), tplLabel);
+        navTemplates.getChildren().setAll(tplLabel);
         navTemplates.setOnMouseClicked(e -> showTemplateGalleryView());
 
         // Nav Activity
@@ -240,7 +219,7 @@ public final class MainShellView implements EngineListener {
         navActivity.getStyleClass().addAll("nav-item");
         Label actLabel = new Label("Activity");
         actLabel.getStyleClass().add("body-text");
-        navActivity.getChildren().addAll(CascadeIcons.icon("activity", 0.9, "icon-secondary"), actLabel);
+        navActivity.getChildren().setAll(actLabel);
         navActivity.setOnMouseClicked(e -> showActivityView());
 
         // Nav Settings
@@ -248,11 +227,37 @@ public final class MainShellView implements EngineListener {
         navSettings.getStyleClass().addAll("nav-item");
         Label setLabel = new Label("Settings");
         setLabel.getStyleClass().add("body-text");
-        navSettings.getChildren().addAll(CascadeIcons.icon("settings", 0.9, "icon-secondary"), setLabel);
+        navSettings.getChildren().setAll(setLabel);
         navSettings.setOnMouseClicked(e -> showSettingsView());
 
-        sidebar.getChildren().addAll(newWfBtn, sep, navDashboard, navWorkflows, navTemplates, navActivity, navSettings);
+        Region sidebarSpacer = new Region();
+        VBox.setVgrow(sidebarSpacer, Priority.ALWAYS);
+
+        // Bottom engine status footer in sidebar
+        VBox sidebarFooter = new VBox(8);
+        sidebarFooter.getStyleClass().add("sidebar-footer");
+        sidebarFooter.setPadding(new Insets(12, 8, 4, 8));
+
+        sidebarEngineStateLabel.getStyleClass().add("caption-text");
+        sidebarEngineStateLabel.setStyle("-fx-text-fill: -color-text-on-dark-secondary;");
+
+        sidebarEngineToggleBtn.setMaxWidth(Double.MAX_VALUE);
+        sidebarEngineToggleBtn.getStyleClass().add("button-primary");
+        UiMotion.animateHover(sidebarEngineToggleBtn);
+        sidebarEngineToggleBtn.setOnAction(e -> toggleEngine());
+
+        sidebarFooter.getChildren().addAll(sidebarEngineStateLabel, sidebarEngineToggleBtn);
+
+        sidebar.getChildren().addAll(brandWordmark, newWfBtn, sep, navDashboard, navWorkflows, navTemplates, navActivity, navSettings, sidebarSpacer, sidebarFooter);
         return sidebar;
+    }
+
+    private void toggleEngine() {
+        if (facade.isRunning()) {
+            facade.stop();
+        } else {
+            facade.start();
+        }
     }
 
     private HBox createStatusBar() {
@@ -268,7 +273,7 @@ public final class MainShellView implements EngineListener {
     }
 
     public void showDashboardView() {
-        viewTitleLabel.setText("Dashboard");
+        viewTitleLabel.setText("Overview");
         if (!navDashboard.getStyleClass().contains("nav-item-active")) {
             navDashboard.getStyleClass().add("nav-item-active");
         }
@@ -417,17 +422,23 @@ public final class MainShellView implements EngineListener {
         if (running) {
             engineChip.setText("Running");
             engineChip.getStyleClass().setAll("chip", "chip-running");
-            engineToggleBtn.setText("Stop engine");
-            engineToggleBtn.setGraphic(CascadeIcons.icon("stop", 0.85, "icon-primary"));
+            engineToggleBtn.setText("Stop");
+            engineToggleBtn.setGraphic(null);
+            engineToggleBtn.getStyleClass().setAll("button-secondary");
             statusEngineState.setText("Engine running");
-            pulseTimeline = UiMotion.pulse(engineChip);
+            sidebarEngineStateLabel.setText("Engine running");
+            sidebarEngineToggleBtn.setText("Stop");
+            sidebarEngineToggleBtn.getStyleClass().setAll("button-secondary");
         } else {
             engineChip.setText("Stopped");
             engineChip.getStyleClass().setAll("chip", "chip-stopped");
-            engineChip.setOpacity(1.0);
-            engineToggleBtn.setText("Start engine");
-            engineToggleBtn.setGraphic(CascadeIcons.icon("play", 0.85, "icon-primary"));
+            engineToggleBtn.setText("Start");
+            engineToggleBtn.setGraphic(null);
+            engineToggleBtn.getStyleClass().setAll("button-primary");
             statusEngineState.setText("Engine stopped");
+            sidebarEngineStateLabel.setText("Engine stopped");
+            sidebarEngineToggleBtn.setText("Start");
+            sidebarEngineToggleBtn.getStyleClass().setAll("button-primary");
         }
     }
 

@@ -5,7 +5,6 @@ import io.github.djaysharma007.cascade.core.WorkflowRepository;
 import io.github.djaysharma007.cascade.engine.EngineFacade;
 import io.github.djaysharma007.cascade.engine.RunOutcome;
 import io.github.djaysharma007.cascade.engine.RunRecord;
-import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
 import io.github.djaysharma007.cascade.ui.components.PluginDisplayNameResolver;
 import io.github.djaysharma007.cascade.ui.components.UiMotion;
 import javafx.geometry.Insets;
@@ -26,16 +25,14 @@ import javafx.scene.layout.VBox;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 /**
- * Dashboard home screen displaying KPI stat cards, a 7-day activity chart, and a live recent activity feed.
+ * Overview screen displaying calm KPI cards, a 7-day activity chart (2/3 width),
+ * and live recent activity feed (1/3 width).
  */
 public final class DashboardView {
 
@@ -50,12 +47,20 @@ public final class DashboardView {
     private final Runnable onNewWorkflow;
 
     private final ScrollPane scrollPane = new ScrollPane();
-    private final VBox root = new VBox(20);
+    private final VBox root = new VBox(24);
 
     private final Label runsTodayVal = new Label("0");
-    private final Label successRateVal = new Label("100%");
+    private final Label runsTodayContext = new Label("Today's runs");
+
+    private final Label successRateVal = new Label("—");
+    private final Label successRateContext = new Label("No runs yet");
+
     private final Label activeWorkflowsVal = new Label("0");
+    private final Label activeWorkflowsContext = new Label("Active and monitoring");
+
     private final Label failuresVal = new Label("0");
+    private final Label failuresContext = new Label("No failures");
+    private VBox failuresCard;
 
     private final CategoryAxis xAxis = new CategoryAxis();
     private final NumberAxis yAxis = new NumberAxis();
@@ -84,51 +89,52 @@ public final class DashboardView {
         root.setPadding(new Insets(24));
         root.getStyleClass().add("surface-panel");
 
-        // Header
+        // Header: Plex Serif page title "Overview" and concise subtitle
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        VBox titleBox = new VBox(2);
-        Label title = new Label("Dashboard");
+        VBox titleBox = new VBox(4);
+        Label title = new Label("Overview");
         title.getStyleClass().add("page-title");
-        Label subtitle = new Label("System overview, execution analytics, and live activity.");
+        Label subtitle = new Label("Execution summary and live workflow activity.");
         subtitle.getStyleClass().add("secondary-text");
         titleBox.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button newWfBtn = new Button("New workflow");
-        newWfBtn.setGraphic(CascadeIcons.icon("plus", 0.85, "icon-primary"));
-        newWfBtn.getStyleClass().add("button-primary");
-        UiMotion.animateHover(newWfBtn);
-        if (onNewWorkflow != null) {
-            newWfBtn.setOnAction(e -> onNewWorkflow.run());
-        }
-
         Button viewActBtn = new Button("View activity");
-        viewActBtn.setGraphic(CascadeIcons.icon("activity", 0.85, "icon-secondary"));
         viewActBtn.getStyleClass().add("button-secondary");
         UiMotion.animateHover(viewActBtn);
         if (onNavigateActivity != null) {
             viewActBtn.setOnAction(e -> onNavigateActivity.run());
         }
 
+        Button newWfBtn = new Button("New workflow");
+        newWfBtn.getStyleClass().add("button-primary");
+        UiMotion.animateHover(newWfBtn);
+        if (onNewWorkflow != null) {
+            newWfBtn.setOnAction(e -> onNewWorkflow.run());
+        }
+
         header.getChildren().addAll(titleBox, spacer, viewActBtn, newWfBtn);
 
-        // Stat Cards Row
+        // 4 Stat Cards Row (no icons, clean typographic hierarchy)
         HBox statCardsRow = createStatCardsRow();
 
-        // Chart & System Card Row
-        HBox middleRow = new HBox(16);
+        // Two-column section: Chart card (~2/3 width) and Recent activity card (~1/3 width)
+        HBox twoColRow = new HBox(16);
         VBox chartCard = createChartCard();
-        HBox.setHgrow(chartCard, Priority.ALWAYS);
-        middleRow.getChildren().add(chartCard);
-
-        // Recent Activity Card
         VBox recentCard = createRecentActivityCard();
 
-        root.getChildren().addAll(header, statCardsRow, middleRow, recentCard);
+        HBox.setHgrow(chartCard, Priority.ALWAYS);
+        HBox.setHgrow(recentCard, Priority.ALWAYS);
+        chartCard.prefWidthProperty().bind(twoColRow.widthProperty().multiply(0.64));
+        recentCard.prefWidthProperty().bind(twoColRow.widthProperty().multiply(0.36));
+
+        twoColRow.getChildren().addAll(chartCard, recentCard);
+
+        root.getChildren().addAll(header, statCardsRow, twoColRow);
 
         scrollPane.setContent(root);
         scrollPane.setFitToWidth(true);
@@ -138,46 +144,38 @@ public final class DashboardView {
     private HBox createStatCardsRow() {
         HBox row = new HBox(16);
 
-        VBox card1 = createStatCard("Runs today", runsTodayVal, "Total executions today", "play", "icon-teal");
-        VBox card2 = createStatCard("Success rate", successRateVal, "Successful completion", "check", "icon-success");
-        VBox card3 = createStatCard("Active workflows", activeWorkflowsVal, "Enabled and monitoring", "workflows", "icon-teal");
-        VBox card4 = createStatCard("Failures", failuresVal, "Needs attention", "close", "icon-error");
+        VBox card1 = createStatCard("Runs today", runsTodayVal, runsTodayContext);
+        VBox card2 = createStatCard("Success rate", successRateVal, successRateContext);
+        VBox card3 = createStatCard("Active workflows", activeWorkflowsVal, activeWorkflowsContext);
+        this.failuresCard = createStatCard("Failures", failuresVal, failuresContext);
 
         HBox.setHgrow(card1, Priority.ALWAYS);
         HBox.setHgrow(card2, Priority.ALWAYS);
         HBox.setHgrow(card3, Priority.ALWAYS);
-        HBox.setHgrow(card4, Priority.ALWAYS);
+        HBox.setHgrow(failuresCard, Priority.ALWAYS);
 
-        row.getChildren().addAll(card1, card2, card3, card4);
+        row.getChildren().addAll(card1, card2, card3, failuresCard);
         return row;
     }
 
-    private VBox createStatCard(String title, Label valueLabel, String subtitle, String iconName, String iconClass) {
-        VBox card = new VBox(8);
+    private VBox createStatCard(String labelText, Label valLabel, Label contextLabel) {
+        VBox card = new VBox(6);
         card.getStyleClass().addAll("card", "stat-card");
 
-        HBox top = new HBox(8);
-        top.setAlignment(Pos.CENTER_LEFT);
-        Label titleLabel = new Label(title);
-        titleLabel.getStyleClass().add("stat-label");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        var icon = CascadeIcons.icon(iconName, 1.0, iconClass);
-        top.getChildren().addAll(titleLabel, sp, icon);
+        Label label = new Label(labelText);
+        label.getStyleClass().add("stat-label");
 
-        valueLabel.getStyleClass().add("stat-value");
+        valLabel.getStyleClass().add("stat-value");
+        contextLabel.getStyleClass().add("stat-context");
 
-        Label subLabel = new Label(subtitle);
-        subLabel.getStyleClass().add("caption-text");
-
-        card.getChildren().addAll(top, valueLabel, subLabel);
+        card.getChildren().addAll(label, valLabel, contextLabel);
         return card;
     }
 
     private VBox createChartCard() {
         VBox card = new VBox(12);
         card.getStyleClass().addAll("card");
-        card.setPadding(new Insets(16));
+        card.setPadding(new Insets(20));
 
         Label chartTitle = new Label("Runs over last 7 days");
         chartTitle.getStyleClass().add("section-title");
@@ -189,8 +187,8 @@ public final class DashboardView {
 
         activityChart.setLegendVisible(false);
         activityChart.setAnimated(!UiMotion.isReduceMotion());
-        activityChart.setPrefHeight(220);
-        activityChart.setMinHeight(200);
+        activityChart.setPrefHeight(240);
+        activityChart.setMinHeight(220);
 
         card.getChildren().addAll(chartTitle, activityChart);
         return card;
@@ -199,7 +197,7 @@ public final class DashboardView {
     private VBox createRecentActivityCard() {
         VBox card = new VBox(12);
         card.getStyleClass().addAll("card");
-        card.setPadding(new Insets(16));
+        card.setPadding(new Insets(20));
 
         HBox head = new HBox(12);
         head.setAlignment(Pos.CENTER_LEFT);
@@ -242,12 +240,39 @@ public final class DashboardView {
 
         long enabledWorkflows = allWfs.stream().filter(Workflow::enabled).count();
 
-        int successRate = runsToday > 0 ? (int) Math.round(((double) successfulToday / runsToday) * 100.0) : 100;
-
+        // Update Runs today
         UiMotion.animateNumber(runsTodayVal, 0, (int) runsToday, "");
-        successRateVal.setText(successRate + "%");
+        runsTodayContext.setText("Today's runs");
+
+        // Update Success rate: with 0 runs must show dash and "No runs yet", never 100%
+        if (runsToday == 0) {
+            successRateVal.setText("—");
+            successRateContext.setText("No runs yet");
+        } else {
+            int successRate = (int) Math.round(((double) successfulToday / runsToday) * 100.0);
+            successRateVal.setText(successRate + "%");
+            successRateContext.setText(successfulToday + " of " + runsToday + " succeeded");
+        }
+
+        // Update Active workflows
         UiMotion.animateNumber(activeWorkflowsVal, 0, (int) enabledWorkflows, "");
+        activeWorkflowsContext.setText(enabledWorkflows == 1 ? "1 enabled" : enabledWorkflows + " enabled");
+
+        // Update Failures: neutral style at 0, only error style when > 0
         UiMotion.animateNumber(failuresVal, 0, (int) failuresToday, "");
+        if (failuresToday == 0) {
+            failuresContext.setText("No failures");
+            failuresContext.setStyle("-fx-text-fill: -color-text-muted;");
+            if (failuresCard != null) {
+                failuresCard.getStyleClass().remove("stat-card-error");
+            }
+        } else {
+            failuresContext.setText(failuresToday == 1 ? "1 needs attention" : failuresToday + " need attention");
+            failuresContext.setStyle("-fx-text-fill: -color-error; -fx-font-weight: bold;");
+            if (failuresCard != null && !failuresCard.getStyleClass().contains("stat-card-error")) {
+                failuresCard.getStyleClass().add("stat-card-error");
+            }
+        }
 
         updateChart(allRuns);
         updateRecentFeed(allRuns);
@@ -281,12 +306,12 @@ public final class DashboardView {
         recentFeedContainer.getChildren().clear();
 
         if (runs.isEmpty()) {
-            VBox empty = new VBox(8);
+            VBox empty = new VBox(6);
             empty.setAlignment(Pos.CENTER);
-            empty.setPadding(new Insets(24));
-            Label emptyTitle = new Label("No recent workflow runs");
+            empty.setPadding(new Insets(32, 12, 32, 12));
+            Label emptyTitle = new Label("No recent runs");
             emptyTitle.getStyleClass().add("section-title");
-            Label emptySub = new Label("Runs appear here live when triggers execute.");
+            Label emptySub = new Label("Activity appears here live as workflows run.");
             emptySub.getStyleClass().add("secondary-text");
             empty.getChildren().addAll(emptyTitle, emptySub);
             recentFeedContainer.getChildren().add(empty);
@@ -300,8 +325,6 @@ public final class DashboardView {
             item.setAlignment(Pos.CENTER_LEFT);
             item.setPadding(new Insets(10, 14, 10, 14));
             item.getStyleClass().addAll("card", "list-row");
-
-            var icon = CascadeIcons.icon("activity", 0.85, "icon-teal");
 
             VBox info = new VBox(2);
             Label name = new Label(r.workflowName());
@@ -325,7 +348,8 @@ public final class DashboardView {
                 default -> "chip-disabled";
             });
 
-            item.getChildren().addAll(icon, info, sp, chip);
+            // Text only: NO icon
+            item.getChildren().addAll(info, sp, chip);
 
             if (onNavigateActivity != null) {
                 item.setCursor(javafx.scene.Cursor.HAND);
@@ -340,5 +364,29 @@ public final class DashboardView {
 
     public Node getNode() {
         return scrollPane;
+    }
+
+    public Label getRunsTodayVal() {
+        return runsTodayVal;
+    }
+
+    public Label getSuccessRateVal() {
+        return successRateVal;
+    }
+
+    public Label getSuccessRateContext() {
+        return successRateContext;
+    }
+
+    public Label getActiveWorkflowsVal() {
+        return activeWorkflowsVal;
+    }
+
+    public Label getFailuresVal() {
+        return failuresVal;
+    }
+
+    public Label getFailuresContext() {
+        return failuresContext;
     }
 }
