@@ -4,7 +4,6 @@ import io.github.djaysharma007.cascade.core.ConditionSpec;
 import io.github.djaysharma007.cascade.core.PluginSpec;
 import io.github.djaysharma007.cascade.core.Workflow;
 import io.github.djaysharma007.cascade.core.WorkflowId;
-import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
 import io.github.djaysharma007.cascade.ui.components.PluginDisplayNameResolver;
 import io.github.djaysharma007.cascade.ui.components.UiMotion;
 import javafx.geometry.Insets;
@@ -192,15 +191,15 @@ public final class TemplateGalleryView {
         String[] categories = {"All", "File Management", "Organization", "Productivity", "Storage", "Monitoring"};
         for (String cat : categories) {
             Button pill = new Button(cat);
-            pill.getStyleClass().add("filter-pill");
+            pill.getStyleClass().add("filter-tab");
             if (cat.equals(selectedCategory)) {
-                pill.getStyleClass().add("filter-pill-active");
+                pill.getStyleClass().add("filter-tab-active");
             }
             UiMotion.animateHover(pill);
             pill.setOnAction(e -> {
                 selectedCategory = cat;
-                categoryPills.getChildren().forEach(n -> n.getStyleClass().remove("filter-pill-active"));
-                pill.getStyleClass().add("filter-pill-active");
+                categoryPills.getChildren().forEach(n -> n.getStyleClass().remove("filter-tab-active"));
+                pill.getStyleClass().add("filter-tab-active");
                 renderCards();
             });
             categoryPills.getChildren().add(pill);
@@ -263,13 +262,9 @@ public final class TemplateGalleryView {
         card.setMaxWidth(340);
         card.setMinHeight(260);
 
-        // Top row: Icon + Title + Category Chip
+        // Top row: Title + Category Chip
         HBox topRow = new HBox(10);
         topRow.setAlignment(Pos.CENTER_LEFT);
-
-        HBox iconBadge = new HBox(CascadeIcons.icon(template.iconName(), 0.9, "icon-teal"));
-        iconBadge.getStyleClass().add("template-icon-badge");
-        iconBadge.setAlignment(Pos.CENTER);
 
         VBox titleBox = new VBox(2);
         Label titleLabel = new Label(template.title());
@@ -282,7 +277,7 @@ public final class TemplateGalleryView {
         titleBox.getChildren().addAll(titleLabel, catChip);
         HBox.setHgrow(titleBox, Priority.ALWAYS);
 
-        topRow.getChildren().addAll(iconBadge, titleBox);
+        topRow.getChildren().add(titleBox);
 
         // Description
         Label descLabel = new Label(template.description());
@@ -322,7 +317,6 @@ public final class TemplateGalleryView {
 
         // Bottom action button
         Button useBtn = new Button("Use template");
-        useBtn.setGraphic(CascadeIcons.icon("plus", 0.8, "icon-primary"));
         useBtn.getStyleClass().addAll("button-primary");
         useBtn.setMaxWidth(Double.MAX_VALUE);
         UiMotion.animateHover(useBtn);

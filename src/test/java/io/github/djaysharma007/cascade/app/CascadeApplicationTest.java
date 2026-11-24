@@ -8,6 +8,7 @@ import io.github.djaysharma007.cascade.engine.WorkflowEngine;
 import io.github.djaysharma007.cascade.plugins.BuiltinPlugins;
 import io.github.djaysharma007.cascade.registry.PluginRegistry;
 import io.github.djaysharma007.cascade.storage.JsonWorkflowRepository;
+import io.github.djaysharma007.cascade.ui.components.ToggleSwitch;
 import io.github.djaysharma007.cascade.ui.views.ActivityView;
 import io.github.djaysharma007.cascade.ui.views.MainShellView;
 import io.github.djaysharma007.cascade.ui.views.WorkflowEditorView;
@@ -15,10 +16,12 @@ import io.github.djaysharma007.cascade.ui.views.WorkflowsView;
 import javafx.application.Platform;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -129,7 +132,8 @@ class CascadeApplicationTest {
         MainShellView shell = shellRef.get();
         Scene scene = sceneRef.get();
 
-        // 0. Capture default screen: Dashboard View
+        // 0. Capture default screen: Dashboard View in zero-state (0 runs, 0 failures)
+        saveSnapshot(scene, "v1_1_dashboard_zero.png");
         saveSnapshot(scene, "v1_1_dashboard.png");
 
         // 1. Switch to Workflows View and capture
@@ -217,6 +221,15 @@ class CascadeApplicationTest {
         assertThat(actDetailLatch.await(5, TimeUnit.SECONDS)).isTrue();
         saveSnapshot(scene, "phase5_activity_detail.png");
 
+        // 4c. Switch back to Dashboard and capture populated state
+        CountDownLatch dashPopLatch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            shell.showDashboardView();
+            dashPopLatch.countDown();
+        });
+        assertThat(dashPopLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(scene, "v1_1_dashboard.png");
+
         // 5. Test engine start/stop toggling
         CountDownLatch engineLatch = new CountDownLatch(1);
         Platform.runLater(() -> {
@@ -241,5 +254,41 @@ class CascadeApplicationTest {
 
         // Close stage
         Platform.runLater(stage::close);
+
+        // 7. Capture ToggleSwitch states (off and on)
+        CountDownLatch toggleLatch = new CountDownLatch(1);
+        AtomicReference<Stage> toggleStageRef = new AtomicReference<>();
+        AtomicReference<Scene> toggleSceneRef = new AtomicReference<>();
+        Platform.runLater(() -> {
+            try {
+                Stage toggleStage = new Stage();
+                ToggleSwitch offToggle = new ToggleSwitch(false);
+                ToggleSwitch onToggle = new ToggleSwitch(true);
+                HBox toggleBox = new HBox(20);
+                toggleBox.setPadding(new javafx.geometry.Insets(24));
+                toggleBox.setStyle("-fx-background-color: #EEE7DB; -fx-alignment: center;");
+                Label offLabel = new Label("Off:");
+                offLabel.setStyle("-fx-font-family: 'IBM Plex Sans'; -fx-text-fill: #102730;");
+                Label onLabel = new Label("On:");
+                onLabel.setStyle("-fx-font-family: 'IBM Plex Sans'; -fx-text-fill: #102730;");
+                toggleBox.getChildren().addAll(offLabel, offToggle, onLabel, onToggle);
+                Scene toggleScene = new Scene(toggleBox, 320, 100);
+                String cssUrl = getClass().getResource("/theme/cascade.css") != null
+                        ? getClass().getResource("/theme/cascade.css").toExternalForm()
+                        : null;
+                if (cssUrl != null) {
+                    toggleScene.getStylesheets().add(cssUrl);
+                }
+                toggleStage.setScene(toggleScene);
+                toggleStage.show();
+                toggleStageRef.set(toggleStage);
+                toggleSceneRef.set(toggleScene);
+            } finally {
+                toggleLatch.countDown();
+            }
+        });
+        assertThat(toggleLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        saveSnapshot(toggleSceneRef.get(), "toggle_switch_states.png");
+        Platform.runLater(() -> toggleStageRef.get().close());
     }
 }

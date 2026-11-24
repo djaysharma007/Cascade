@@ -73,7 +73,6 @@ public final class CommandPaletteDialog extends StackPane {
         inputRow.setPadding(new Insets(12, 16, 12, 16));
         inputRow.getStyleClass().add("command-palette-input-row");
 
-        var searchIcon = CascadeIcons.icon("search", 0.9, "icon-secondary");
         searchField.setPromptText("Type a command or search workflows... (Esc to close)");
         searchField.getStyleClass().add("command-palette-input");
         HBox.setHgrow(searchField, Priority.ALWAYS);
@@ -81,7 +80,7 @@ public final class CommandPaletteDialog extends StackPane {
         searchField.textProperty().addListener((obs, oldV, newV) -> filterList(newV));
         searchField.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPress);
 
-        inputRow.getChildren().addAll(searchIcon, searchField);
+        inputRow.getChildren().add(searchField);
 
         // List view
         listView.getStyleClass().add("command-palette-list");
@@ -97,8 +96,6 @@ public final class CommandPaletteDialog extends StackPane {
                     HBox row = new HBox(12);
                     row.setAlignment(Pos.CENTER_LEFT);
                     row.setPadding(new Insets(6, 10, 6, 10));
-
-                    var icon = CascadeIcons.icon(item.iconName(), 0.85, "icon-teal");
 
                     VBox titleBox = new VBox(2);
                     Label titleLabel = new Label(item.title());
@@ -116,7 +113,7 @@ public final class CommandPaletteDialog extends StackPane {
                     Label hintLabel = new Label(item.hint() != null ? item.hint() : "");
                     hintLabel.getStyleClass().add("caption-text");
 
-                    row.getChildren().addAll(icon, titleBox, catBadge, spacer, hintLabel);
+                    row.getChildren().addAll(titleBox, catBadge, spacer, hintLabel);
                     setGraphic(row);
                 }
             }

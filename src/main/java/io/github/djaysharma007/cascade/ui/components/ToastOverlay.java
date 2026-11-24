@@ -50,7 +50,7 @@ public final class ToastOverlay extends VBox {
         var icon = CascadeIcons.icon(iconName, 0.9, switch (type) {
             case SUCCESS -> "icon-success";
             case ERROR -> "icon-error";
-            default -> "icon-teal";
+            default -> "icon-functional";
         });
 
         Label label = new Label(message);

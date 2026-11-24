@@ -6,7 +6,6 @@ import io.github.djaysharma007.cascade.engine.EngineFacade;
 import io.github.djaysharma007.cascade.engine.RunOutcome;
 import io.github.djaysharma007.cascade.engine.RunRecord;
 import io.github.djaysharma007.cascade.engine.StepRecord;
-import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
 import io.github.djaysharma007.cascade.ui.components.PluginDisplayNameResolver;
 import io.github.djaysharma007.cascade.ui.components.ToastOverlay;
 import io.github.djaysharma007.cascade.ui.components.UiMotion;
@@ -103,7 +102,6 @@ public final class ActivityView {
             {
                 undoBtn.getStyleClass().add("button-secondary");
                 undoBtn.setStyle("-fx-padding: 2px 8px; -fx-font-size: 11px;");
-                undoBtn.setGraphic(CascadeIcons.icon("undo", 0.7, "icon-secondary"));
                 UiMotion.animateHover(undoBtn);
                 undoBtn.setOnAction(e -> {
                     RunRecord run = getTableRow() != null ? getTableRow().getItem() : null;
@@ -149,12 +147,11 @@ public final class ActivityView {
         emptyState.setAlignment(Pos.CENTER);
         emptyState.setPadding(new Insets(64, 24, 64, 24));
         emptyState.getStyleClass().add("card");
-        var actIcon = CascadeIcons.icon("activity", 2.0, "icon-muted");
         Label emptyTitle = new Label("No workflow runs recorded yet");
         emptyTitle.getStyleClass().add("section-title");
         Label emptySub = new Label("Runs appear here automatically when triggers fire.");
         emptySub.getStyleClass().add("secondary-text");
-        emptyState.getChildren().addAll(actIcon, emptyTitle, emptySub);
+        emptyState.getChildren().addAll(emptyTitle, emptySub);
 
         // Detail panel setup
         detailPanel.getStyleClass().add("detail-panel");
@@ -198,7 +195,6 @@ public final class ActivityView {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button undoBtn = new Button("Undo run");
-        undoBtn.setGraphic(CascadeIcons.icon("undo", 0.75, "icon-secondary"));
         undoBtn.getStyleClass().add("button-secondary");
         UiMotion.animateHover(undoBtn);
 
@@ -213,7 +209,6 @@ public final class ActivityView {
         }
 
         Button closeBtn = new Button("Close");
-        closeBtn.setGraphic(CascadeIcons.icon("close", 0.75, "icon-secondary"));
         closeBtn.getStyleClass().add("button-secondary");
         UiMotion.animateHover(closeBtn);
         closeBtn.setOnAction(e -> {

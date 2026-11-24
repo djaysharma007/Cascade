@@ -28,7 +28,7 @@ public final class CascadeIcons {
     }
 
     public static SVGPath icon(String name) {
-        return icon(name, 1.0, "icon-teal");
+        return icon(name, 1.0, "icon-functional");
     }
 
     public static SVGPath icon(String name, double scale, String cssClass) {

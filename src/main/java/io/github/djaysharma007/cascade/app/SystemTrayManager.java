@@ -125,11 +125,11 @@ public final class SystemTrayManager implements EngineListener {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         // Background rounded box
-        g.setColor(new Color(0x0E, 0x17, 0x19));
+        g.setColor(new Color(0x10, 0x27, 0x30)); // ink #102730
         g.fillRoundRect(0, 0, size, size, 4, 4);
 
-        // Cascade mark: 3 descending vertical bars in bright teal (#64E9EE)
-        g.setColor(new Color(0x64, 0xE9, 0xEE));
+        // Cascade mark: 3 descending vertical bars in warm copper (#B77457)
+        g.setColor(new Color(0xB7, 0x74, 0x57)); // copper #B77457
         g.fillRoundRect(2, 2, 3, 12, 2, 2);
         g.fillRoundRect(6, 4, 3, 10, 2, 2);
         g.fillRoundRect(10, 6, 3, 8, 2, 2);

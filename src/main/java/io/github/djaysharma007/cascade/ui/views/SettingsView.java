@@ -7,7 +7,6 @@ import io.github.djaysharma007.cascade.settings.Settings;
 import io.github.djaysharma007.cascade.settings.SettingsService;
 import io.github.djaysharma007.cascade.settings.StartupManager;
 import io.github.djaysharma007.cascade.storage.WorkflowPortabilityService;
-import io.github.djaysharma007.cascade.ui.components.CascadeIcons;
 import io.github.djaysharma007.cascade.ui.components.ToastOverlay;
 import io.github.djaysharma007.cascade.ui.components.ToggleSwitch;
 import io.github.djaysharma007.cascade.ui.components.UiMotion;
@@ -146,13 +145,11 @@ public final class SettingsView {
         portBtnRow.setAlignment(Pos.CENTER_LEFT);
 
         Button importBtn = new Button("Import workflow...");
-        importBtn.setGraphic(CascadeIcons.icon("folder", 0.8, "icon-secondary"));
         importBtn.getStyleClass().add("button-secondary");
         UiMotion.animateHover(importBtn);
         importBtn.setOnAction(e -> chooseAndImportWorkflow());
 
         Button exportAllBtn = new Button("Export all workflows...");
-        exportAllBtn.setGraphic(CascadeIcons.icon("file", 0.8, "icon-secondary"));
         exportAllBtn.getStyleClass().add("button-secondary");
         UiMotion.animateHover(exportAllBtn);
         exportAllBtn.setOnAction(e -> chooseAndExportAllWorkflows());
