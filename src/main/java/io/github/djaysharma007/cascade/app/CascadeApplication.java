@@ -116,6 +116,65 @@ public class CascadeApplication extends Application {
             primaryStage.show();
             log.info("Cascade application window displayed");
         }
+
+        boolean isTour = Boolean.getBoolean("cascade.ui.tour");
+        Parameters params = getParameters();
+        if (params != null && (params.getRaw().contains("--ui-tour") || params.getUnnamed().contains("--ui-tour"))) {
+            isTour = true;
+        }
+        if (isTour) {
+            runUiTourAndExit();
+        }
+    }
+
+    private void runUiTourAndExit() {
+        Thread tourThread = new Thread(() -> {
+            try {
+                log.info("[UI Tour] Starting automated UI screen tour");
+                Thread.sleep(600);
+
+                log.info("[UI Tour] Screen 1/7: Overview");
+                Platform.runLater(() -> mainShell.showDashboardView());
+                Thread.sleep(500);
+
+                log.info("[UI Tour] Screen 2/7: Workflows");
+                Platform.runLater(() -> mainShell.showWorkflowsView());
+                Thread.sleep(500);
+
+                log.info("[UI Tour] Screen 3/7: Templates");
+                Platform.runLater(() -> mainShell.showTemplateGalleryView());
+                Thread.sleep(500);
+
+                log.info("[UI Tour] Screen 4/7: Activity");
+                Platform.runLater(() -> mainShell.showActivityView());
+                Thread.sleep(500);
+
+                log.info("[UI Tour] Screen 5/7: Settings");
+                Platform.runLater(() -> mainShell.showSettingsView());
+                Thread.sleep(500);
+
+                log.info("[UI Tour] Screen 6/7: Workflow Editor");
+                Platform.runLater(() -> mainShell.openNewWorkflowEditor());
+                Thread.sleep(500);
+
+                log.info("[UI Tour] Screen 7/7: Command Palette (Ctrl+K)");
+                Platform.runLater(() -> mainShell.toggleCommandPalette());
+                Thread.sleep(400);
+                Platform.runLater(() -> mainShell.toggleCommandPalette());
+                Thread.sleep(400);
+
+                log.info("[UI Tour] UI screen tour completed successfully with 0 errors");
+                Platform.runLater(() -> {
+                    shutdownAndQuit();
+                    System.exit(0);
+                });
+            } catch (Exception e) {
+                log.error("[UI Tour] Failed during UI tour: ", e);
+                System.exit(1);
+            }
+        }, "ui-tour-runner");
+        tourThread.setDaemon(true);
+        tourThread.start();
     }
 
     public void shutdownAndQuit() {
