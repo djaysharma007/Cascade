@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Validates WCAG contrast ratio for all text and background token pairs.
- * Minimum contrast ratio is 4.5:1.
+ * Minimum contrast ratio is 4.5:1 for normal text (WCAG AA).
  */
 class ContrastRatioTest {
 
@@ -39,27 +39,72 @@ class ContrastRatioTest {
     }
 
     @Test
-    void allTextAndBackgroundTokenPairsMeetWcagThreshold() {
-        Map<String, String> backgrounds = Map.of(
-                "bg-base", "#001011",
-                "bg-surface", "#061E21",
-                "bg-raised", "#093A3E"
+    void lightSurfacesTextTokensMeetWcagThreshold() {
+        Map<String, String> lightBackgrounds = Map.of(
+                "paper", "#F4EFE8",
+                "cream", "#EEE7DB"
         );
 
-        Map<String, String> texts = Map.of(
-                "text-primary", "#E6F2F4",
-                "text-secondary", "#97C8EB",
-                "text-muted", "#86B0B7"
+        Map<String, String> lightSurfaceTexts = Map.of(
+                "text-primary (ink)", "#102730",
+                "text-secondary", "#445963",
+                "text-muted", "#546870",
+                "status-success", "#206E49",
+                "status-warning", "#875500",
+                "status-error", "#A12E24"
         );
 
-        for (var bg : backgrounds.entrySet()) {
-            for (var text : texts.entrySet()) {
+        for (var bg : lightBackgrounds.entrySet()) {
+            for (var text : lightSurfaceTexts.entrySet()) {
                 double ratio = contrastRatio(bg.getValue(), text.getValue());
                 assertThat(ratio)
                         .withFailMessage("Contrast ratio for %s on %s is %.2f:1, below required 4.5:1",
                                 text.getKey(), bg.getKey(), ratio)
                         .isGreaterThanOrEqualTo(4.5);
             }
+        }
+    }
+
+    @Test
+    void darkSurfacesTextTokensMeetWcagThreshold() {
+        Map<String, String> darkBackgrounds = Map.of(
+                "ink (sidebar/topbar)", "#102730",
+                "petrol (primary button)", "#17495A"
+        );
+
+        Map<String, String> darkSurfaceTexts = Map.of(
+                "text-on-dark (paper)", "#F4EFE8",
+                "text-on-dark-secondary (sand)", "#D9BC9A"
+        );
+
+        for (var bg : darkBackgrounds.entrySet()) {
+            for (var text : darkSurfaceTexts.entrySet()) {
+                double ratio = contrastRatio(bg.getValue(), text.getValue());
+                assertThat(ratio)
+                        .withFailMessage("Contrast ratio for %s on %s is %.2f:1, below required 4.5:1",
+                                text.getKey(), bg.getKey(), ratio)
+                        .isGreaterThanOrEqualTo(4.5);
+            }
+        }
+    }
+
+    @Test
+    void statusChipsTintedPairsMeetWcagThreshold() {
+        Map<String, String[]> chipPairs = Map.of(
+                "success-chip", new String[]{"#E2EFE7", "#206E49"},
+                "warning-chip", new String[]{"#F6EEDA", "#875500"},
+                "error-chip", new String[]{"#F7E6E4", "#A12E24"},
+                "neutral-chip", new String[]{"#EAE3D6", "#445963"}
+        );
+
+        for (var entry : chipPairs.entrySet()) {
+            String bg = entry.getValue()[0];
+            String text = entry.getValue()[1];
+            double ratio = contrastRatio(bg, text);
+            assertThat(ratio)
+                    .withFailMessage("Contrast ratio for chip %s is %.2f:1, below required 4.5:1",
+                            entry.getKey(), ratio)
+                    .isGreaterThanOrEqualTo(4.5);
         }
     }
 }

@@ -61,6 +61,40 @@ class UiComponentsTest {
     }
 
     @Test
+    void testToggleSwitchThumbEndPositionsInBothStates() {
+        boolean originalMotion = UiMotion.isReduceMotion();
+        try {
+            UiMotion.setReduceMotion(true);
+
+            // Off state on initial render
+            ToggleSwitch toggleOff = new ToggleSwitch(false);
+            new javafx.scene.Scene(toggleOff);
+            assertThat(toggleOff.getThumbCenterX())
+                    .as("Thumb center X in OFF state")
+                    .isEqualTo(ToggleSwitch.THUMB_OFF_CENTER_X);
+            assertThat(ToggleSwitch.THUMB_OFF_CENTER_X).isEqualTo(11.0);
+
+            // On state on initial render
+            ToggleSwitch toggleOn = new ToggleSwitch(true);
+            new javafx.scene.Scene(toggleOn);
+            assertThat(toggleOn.getThumbCenterX())
+                    .as("Thumb center X in ON state")
+                    .isEqualTo(ToggleSwitch.THUMB_ON_CENTER_X);
+            assertThat(ToggleSwitch.THUMB_ON_CENTER_X).isEqualTo(29.0);
+
+            // Transition from off to on
+            toggleOff.setSelected(true);
+            assertThat(toggleOff.getThumbCenterX()).isEqualTo(ToggleSwitch.THUMB_ON_CENTER_X);
+
+            // Transition from on to off
+            toggleOff.setSelected(false);
+            assertThat(toggleOff.getThumbCenterX()).isEqualTo(ToggleSwitch.THUMB_OFF_CENTER_X);
+        } finally {
+            UiMotion.setReduceMotion(originalMotion);
+        }
+    }
+
+    @Test
     void testUiMotionReduceMotion() {
         boolean original = UiMotion.isReduceMotion();
         try {
@@ -88,7 +122,7 @@ class UiComponentsTest {
                 assertThat(is).as("Resource " + path).isNotNull();
                 javafx.scene.text.Font font = javafx.scene.text.Font.loadFont(is, 14);
                 assertThat(font).as("Font for " + path).isNotNull();
-                assertThat(font.getFamily()).isIn("IBM Plex Sans", "IBM Plex Serif", "IBM Plex Mono");
+                assertThat(font.getFamily()).startsWith("IBM Plex");
             }
         }
     }

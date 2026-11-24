@@ -4,30 +4,33 @@ import javafx.animation.Interpolator;
 import javafx.animation.TranslateTransition;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
-import javafx.geometry.Pos;
 import javafx.scene.control.Control;
 import javafx.scene.control.Skin;
 import javafx.scene.control.SkinBase;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 /**
- * Modern toggle switch control with smooth sliding animation and full keyboard accessibility.
+ * Calm, accessible toggle switch control with full track thumb travel.
+ * Track: 40x22 px (sand when off, petrol when on).
+ * Thumb: 18 px diameter (paper fill).
+ * Travel distance: 18 px (from centerX=11.0 to centerX=29.0 with 2.0 px symmetric padding).
  */
 public final class ToggleSwitch extends Control {
 
-    private static final double TRACK_WIDTH = 42.0;
-    private static final double TRACK_HEIGHT = 22.0;
-    private static final double THUMB_RADIUS = 8.0;
-    private static final double THUMB_LEFT = 3.0 + THUMB_RADIUS;
-    private static final double THUMB_RIGHT = TRACK_WIDTH - 3.0 - THUMB_RADIUS;
+    public static final double TRACK_WIDTH = 40.0;
+    public static final double TRACK_HEIGHT = 22.0;
+    public static final double THUMB_RADIUS = 9.0;
+    public static final double PADDING = (TRACK_HEIGHT - (2.0 * THUMB_RADIUS)) / 2.0; // 2.0 px
+    public static final double THUMB_OFF_CENTER_X = PADDING + THUMB_RADIUS;           // 11.0 px
+    public static final double THUMB_ON_CENTER_X = TRACK_WIDTH - PADDING - THUMB_RADIUS; // 29.0 px
+    public static final double TRAVEL_DISTANCE = THUMB_ON_CENTER_X - THUMB_OFF_CENTER_X; // 18.0 px
 
     private final BooleanProperty selected = new SimpleBooleanProperty(false);
+    private ToggleSwitchSkin skinInstance;
 
     public ToggleSwitch() {
         this(false);
@@ -67,10 +70,18 @@ public final class ToggleSwitch extends Control {
 
     @Override
     protected Skin<?> createDefaultSkin() {
-        return new ToggleSwitchSkin(this);
+        this.skinInstance = new ToggleSwitchSkin(this);
+        return skinInstance;
     }
 
-    private static final class ToggleSwitchSkin extends SkinBase<ToggleSwitch> {
+    public double getThumbCenterX() {
+        if (skinInstance != null) {
+            return skinInstance.getThumbCenterX();
+        }
+        return isSelected() ? THUMB_ON_CENTER_X : THUMB_OFF_CENTER_X;
+    }
+
+    public static final class ToggleSwitchSkin extends SkinBase<ToggleSwitch> {
 
         private final Rectangle track;
         private final Circle thumb;
@@ -86,6 +97,7 @@ public final class ToggleSwitch extends Control {
 
             thumb = new Circle(THUMB_RADIUS);
             thumb.getStyleClass().add("toggle-switch-thumb");
+            thumb.setCenterX(THUMB_OFF_CENTER_X);
             thumb.setCenterY(TRACK_HEIGHT / 2.0);
 
             container = new Pane(track, thumb);
@@ -95,6 +107,7 @@ public final class ToggleSwitch extends Control {
 
             getChildren().add(container);
 
+            // Initialize position immediately without animation
             updateVisualState(control.isSelected(), false);
 
             control.selectedProperty().addListener((obs, oldV, isSel) -> {
@@ -103,7 +116,7 @@ public final class ToggleSwitch extends Control {
 
             control.focusedProperty().addListener((obs, oldV, isFocused) -> {
                 if (isFocused) {
-                    track.setStyle("-fx-stroke: -color-accent-bright; -fx-stroke-width: 2px;");
+                    track.setStyle("-fx-stroke: -color-copper; -fx-stroke-width: 2px;");
                 } else {
                     track.setStyle("");
                 }
@@ -111,7 +124,8 @@ public final class ToggleSwitch extends Control {
         }
 
         private void updateVisualState(boolean active, boolean animate) {
-            double targetX = active ? THUMB_RIGHT : THUMB_LEFT;
+            double targetTranslateX = active ? TRAVEL_DISTANCE : 0.0;
+
             if (active) {
                 if (!track.getStyleClass().contains("toggle-switch-track-active")) {
                     track.getStyleClass().add("toggle-switch-track-active");
@@ -121,13 +135,18 @@ public final class ToggleSwitch extends Control {
             }
 
             if (animate) {
-                TranslateTransition tt = new TranslateTransition(Duration.millis(150), thumb);
-                tt.setToX(targetX - THUMB_LEFT);
+                TranslateTransition tt = new TranslateTransition(Duration.millis(180), thumb);
+                tt.setToX(targetTranslateX);
                 tt.setInterpolator(Interpolator.EASE_OUT);
+                tt.setOnFinished(e -> thumb.setTranslateX(targetTranslateX));
                 tt.play();
             } else {
-                thumb.setTranslateX(targetX - THUMB_LEFT);
+                thumb.setTranslateX(targetTranslateX);
             }
+        }
+
+        double getThumbCenterX() {
+            return thumb.getCenterX() + thumb.getTranslateX();
         }
     }
 }
