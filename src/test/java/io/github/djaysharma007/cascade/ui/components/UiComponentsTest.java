@@ -73,4 +73,23 @@ class UiComponentsTest {
             UiMotion.setReduceMotion(original);
         }
     }
+
+    @Test
+    void testIbmPlexFontsLoaded() throws Exception {
+        String[] fontPaths = {
+                "/fonts/IBMPlexSans-Regular.ttf",
+                "/fonts/IBMPlexSans-SemiBold.ttf",
+                "/fonts/IBMPlexSerif-Regular.ttf",
+                "/fonts/IBMPlexSerif-SemiBold.ttf",
+                "/fonts/IBMPlexMono-Regular.ttf"
+        };
+        for (String path : fontPaths) {
+            try (var is = getClass().getResourceAsStream(path)) {
+                assertThat(is).as("Resource " + path).isNotNull();
+                javafx.scene.text.Font font = javafx.scene.text.Font.loadFont(is, 14);
+                assertThat(font).as("Font for " + path).isNotNull();
+                assertThat(font.getFamily()).isIn("IBM Plex Sans", "IBM Plex Serif", "IBM Plex Mono");
+            }
+        }
+    }
 }
